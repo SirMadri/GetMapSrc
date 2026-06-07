@@ -7,6 +7,7 @@ local function mkdir(path)
 end
 
 return function(result, game_name)
+	game_name = game_name:gsub('[*?"<>|]', "_"):gsub(":", "_")
 	local base = game_name.."/"..os.date("%H-%M-%S")
 	mkdir(base)
 	for service, files in next, result do

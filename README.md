@@ -18,7 +18,9 @@ Execute this into your executor:
 getgenv().dumper = {
     services = {
         game:GetService("ReplicatedStorage"),
-    }
+    },
+
+    use_threading = true
 }
 loadstring(game:HttpGet("https://raw.githubusercontent.com/SirMadri/GetMapSrc/main/src/loader.luau"))()
 ```
