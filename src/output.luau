@@ -9,7 +9,7 @@ end
 return function(result, game_name)
 	game_name = game_name:gsub('[*?"<>|]', "_"):gsub(":", "_")
 	local base = game_name.."/"..os.date("%H-%M-%S")
-	mkdir(base)
+	mkdir("_GetMapSrc/" .. base)
 	for service, files in next, result do
 		for path, src in next, files do
 			local full = base.."/"..service.."/"..path..".lua"
