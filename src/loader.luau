@@ -1,6 +1,6 @@
 repeat task.wait() until game:IsLoaded()
 print("-- starting dumper")
-print("-- made by SirMadri, https://github.com/SirMadri/MapSrcDumper")
+print("-- made by SirMadri, https://github.com/SirMadri/GetMapSrc")
 
 local mkt = cloneref and cloneref(game:GetService("MarketplaceService")) or game:GetService("MarketplaceService")
 local start = os.clock()
@@ -22,12 +22,35 @@ print("-- dumping: " .. game_name)
 local repo = loadstring(game:HttpGet("https://raw.githubusercontent.com/SirMadri/GetMapSrc/refs/heads/main/src/get_modules.luau"))()
 local result = {}
 
-for _, service in ipairs(config.services) do
-	print("-- reading: " .. service.Name)
-	result[service.Name] = {}
-	for path, mod in next, repo.read_game(service) do
-		print("-- decompiling: " .. path)
-		result[service.Name][path] = repo.script_src(mod)
+if config.use_threading then
+	local queue = {}
+	for _, service in ipairs(config.services) do
+		print("-- reading: " .. service.Name)
+		result[service.Name] = {}
+		for path, mod in next, repo.read_game(service) do
+			queue[#queue + 1] = { svc = service.Name, path = path, mod = mod }
+		end
+	end
+
+	print("-- spawning " .. #queue .. " threads")
+	local done = 0
+	for _, entry in next, queue do
+		task.spawn(function()
+			print("-- decompiling: " .. entry.path)
+			result[entry.svc][entry.path] = repo.script_src(entry.mod)
+			done += 1
+		end)
+	end
+
+	repeat task.wait() until done >= #queue
+else
+	for _, service in ipairs(config.services) do
+		print("-- reading: " .. service.Name)
+		result[service.Name] = {}
+		for path, mod in next, repo.read_game(service) do
+			print("-- decompiling: " .. path)
+			result[service.Name][path] = repo.script_src(mod)
+		end
 	end
 end
 

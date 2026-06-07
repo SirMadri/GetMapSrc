@@ -3,6 +3,7 @@
 assert(getscriptbytecode, "exploit does not support getscriptbytecode.")
 
 local last = 0
+local lock = false
 local http = cloneref and cloneref(game:GetService("HttpService")) or game:GetService("HttpService")
 local b64 = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/"
 
@@ -25,10 +26,15 @@ return function(scr)
 	local ok, bc = pcall(getscriptbytecode, scr)
 	if not ok then return "-- failed to read script bytecode\n--[[\n"..bc.."\n--]]" end
 
-	local e = os.clock() - last
-	if e < 0.12 then task.wait(0.12 - e) end
-
+	-- mutex: só uma coroutine passa por aqui por vez, garantindo o rate limit global
+	while lock do task.wait() end
+	lock = true
+	local elapsed = os.clock() - last
+	if elapsed < 0.12 then task.wait(0.12 - elapsed) end
 	last = os.clock()
+	lock = false
+
+	-- request acontece fora do lock — várias podem estar in-flight ao mesmo tempo
 	local res = request({
 		Url = "https://api.lua.expert/decompile",
 		Method = "POST",

@@ -37,7 +37,9 @@ getgenv().dumper = {
         game:GetService("ReplicatedStorage"),
         game:GetService("Workspace"),
         -- add whatever you need
-    }
+    },
+
+    use_threading = true
 }
 
 loadstring(game:HttpGet("https://raw.githubusercontent.com/SirMadri/GetMapSrc/main/src/loader.luau"))()
