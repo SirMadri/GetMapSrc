@@ -1,4 +1,4 @@
-local url = "https://raw.githubusercontent.com/SirMadri/MapSrcDumper/main/src"
+local url = "https://raw.githubusercontent.com/SirMadri/GetMapSrc/refs/heads/main/src"
 local repo, n = {}, 3
 
 for k, f in next, { script_src="/script_src.luau", read_game="/read_game.luau", output="/output.luau" } do

@@ -19,7 +19,7 @@ local game_name = ok and info and info.Name or tostring(game.PlaceId)
 
 print("-- dumping: " .. game_name)
 
-local repo = loadstring(game:HttpGet("https://raw.githubusercontent.com/SirMadri/MapSrcDumper/main/src/get_modules.luau"))()
+local repo = loadstring(game:HttpGet("https://raw.githubusercontent.com/SirMadri/GetMapSrc/refs/heads/main/src/get_modules.luau"))()
 local result = {}
 
 for _, service in ipairs(config.services) do
