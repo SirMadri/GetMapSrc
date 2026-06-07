@@ -1,5 +1,6 @@
 # 🗺️ GetMapSrc
 
+> Open-source Roblox script & remote dumper.
 > Dump and decompile every `Script` from a Roblox game - straight from your executor.
 
 ---
@@ -18,6 +19,10 @@ Execute this into your executor:
 getgenv().dumper = {
     services = {
         game:GetService("ReplicatedStorage"),
+        game:GetService("ReplicatedFirst"),
+        game:GetService("StarterPlayer"),
+        game:GetService("StarterGui"),
+        game:GetService("Workspace"),
     },
 
     use_threading = true,
@@ -38,18 +43,21 @@ Want to choose which services get scanned? Set `getgenv().dumper` **before** run
 getgenv().dumper = {
     services = {
         game:GetService("ReplicatedStorage"),
+        game:GetService("ReplicatedFirst"),
+        game:GetService("StarterPlayer"),
+        game:GetService("StarterGui"),
         game:GetService("Workspace"),
         -- add whatever you need
     },
 
-    use_threading = true,
-    dump_remotes = true
+    use_threading = true, -- faster way to decompile scripts 
+    dump_remotes = true -- dump remotes (RemoteEvent, RemoteFunction, UnreliableRemoteEvent)
 }
 
 loadstring(game:HttpGet("https://raw.githubusercontent.com/SirMadri/GetMapSrc/main/src/loader.luau"))()
 ```
 
-By default it scans only `ReplicatedStorage`.
+By default it scans `ReplicatedStorage`, `ReplicatedFirst`, `StarterPlayer`, `StarterGui`, `Workspace`.
 
 ---
 
@@ -62,8 +70,11 @@ GameName/
 └── 14-30-57/
     ├── ReplicatedStorage/
     │   └── SomeModule.lua
-    └── ReplicatedFirst/
-        └── Loader.lua
+    ├── ReplicatedFirst/
+    │   └── Loader.lua
+    └── Remotes/
+        └── ReplicatedStorage/
+            └── SomeRemote.remote.lua
 ```
 
 ---

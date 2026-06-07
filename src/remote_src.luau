@@ -1,6 +1,6 @@
 return function(meta)
 	return table.concat({
-		"-- Remote Dump",
+		"-- GetMapSrc | Made by SirMari",
 		"-- Name: " .. meta.Name,
 		"-- ClassName: " .. meta.ClassName,
 		"-- FullName: " .. meta.FullName,

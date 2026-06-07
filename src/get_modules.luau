@@ -1,12 +1,11 @@
 local url = "https://raw.githubusercontent.com/SirMadri/GetMapSrc/refs/heads/main/src"
-local repo, n = {}, 5
+local repo, n = {}, 4
 
 for k, f in next, {
-	script_src    = "/script_src.luau",
-	read_game     = "/read_game.luau",
-	output        = "/output.luau",
-	read_remotes  = "/read_remotes.luau",
-	remote_src    = "/remote_src.luau",
+	script_src  = "/script_src.luau",
+	read_game   = "/read_game.luau",
+	remote_src  = "/remote_src.luau",
+	output      = "/output.luau",
 } do
 	task.spawn(function()
 		repo[k] = loadstring(game:HttpGet(url..f))()
