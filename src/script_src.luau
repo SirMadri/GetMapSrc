@@ -43,5 +43,6 @@ return function(scr)
 	if not res or res.StatusCode ~= 200 then
 		return "-- api request error\n--[[\n"..(res and res.Body or "no response").."\n--]]"
 	end
-	return res.Body
+	local src = res.Body:gsub("^%-%- https://lua%.expert/%s*\n?", "")
+	return "-- dumped by https://github.com/SirMadri/GetMapSrc\n-- decompiled by https://lua.expert/\n" .. src
 end

@@ -14,7 +14,7 @@ config.services = config.services or {
 	game:GetService("Workspace"),
 }
 
-local ok, info = pcall(mkt.GetProductInfo, mkt, game.PlaceId)
+local ok, info = pcall(mkt.GetProductInfoAsync, mkt, game.PlaceId)
 local game_name = ok and info and info.Name or tostring(game.PlaceId)
 
 print("-- dumping: " .. game_name)
@@ -53,8 +53,8 @@ else
 	local done = 0
 	for _, entry in next, queue do
 		task.spawn(function()
-			print("-- decompiling: " .. entry.path)
 			result[entry.svc][entry.path] = repo.script_src(entry.mod)
+			print("-- decompiled: " .. entry.path)
 			done += 1
 		end)
 	end
