@@ -20,7 +20,8 @@ getgenv().dumper = {
         game:GetService("ReplicatedStorage"),
     },
 
-    use_threading = true
+    use_threading = true,
+    dump_remotes = true
 }
 loadstring(game:HttpGet("https://raw.githubusercontent.com/SirMadri/GetMapSrc/main/src/loader.luau"))()
 ```
@@ -41,13 +42,14 @@ getgenv().dumper = {
         -- add whatever you need
     },
 
-    use_threading = true
+    use_threading = true,
+    dump_remotes = true
 }
 
 loadstring(game:HttpGet("https://raw.githubusercontent.com/SirMadri/GetMapSrc/main/src/loader.luau"))()
 ```
 
-By default it scans `ReplicatedStorage`, `ReplicatedFirst`, `StarterPlayer`, `StarterGui` and `Workspace`.
+By default it scans only `ReplicatedStorage`.
 
 ---
 

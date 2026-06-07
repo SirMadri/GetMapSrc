@@ -18,10 +18,26 @@ local ok, info = pcall(mkt.GetProductInfo, mkt, game.PlaceId)
 local game_name = ok and info and info.Name or tostring(game.PlaceId)
 
 print("-- dumping: " .. game_name)
+print("-- your game may freeze while we look for scripts")
 
 local repo = loadstring(game:HttpGet("https://raw.githubusercontent.com/SirMadri/GetMapSrc/refs/heads/main/src/get_modules.luau"))()
 local result = {}
+local remotes = {}
 
+-- collect remotes (fast, no HTTP)
+if config.dump_remotes then
+	for _, service in ipairs(config.services) do
+		local found = repo.read_remotes(service)
+		if next(found) then
+			remotes[service.Name] = {}
+			for path, meta in next, found do
+				remotes[service.Name][path] = repo.remote_src(meta)
+			end
+		end
+	end
+end
+
+-- decompile scripts
 if config.use_threading then
 	local queue = {}
 	for _, service in ipairs(config.services) do
@@ -54,5 +70,5 @@ else
 	end
 end
 
-repo.output(result, game_name)
+repo.output(result, remotes, game_name)
 print("-- done in " .. math.floor((os.clock() - start) * 100) / 100 .. "s")
