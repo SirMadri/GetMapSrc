@@ -23,7 +23,7 @@ print("-- your game may freeze while we look for scripts")
 local repo = loadstring(game:HttpGet("https://raw.githubusercontent.com/SirMadri/GetMapSrc/refs/heads/main/src/get_modules.luau"))()
 local queue = {}
 local write = repo.output(game_name)
-local TIMEOUT = config.timeout or 30
+local TIMEOUT = 60
 
 for _, service in ipairs(config.services) do
 	print("-- reading: " .. service.Name)
@@ -50,9 +50,15 @@ if config.use_threading == false then
 		write(entry.svc, entry.path, success and src or ("-- error: " .. tostring(src)))
 	end
 else
-	print("-- spawning " .. #queue .. " threads (timeout: " .. TIMEOUT .. "s each)")
+	local MAX_WORKERS = 15
+	print("-- workers: " .. MAX_WORKERS .. ", timeout: " .. TIMEOUT .. "s each")
+	local active = 0
 	local done = 0
+
 	for _, entry in next, queue do
+		repeat task.wait() until active < MAX_WORKERS
+		active += 1
+
 		task.spawn(function()
 			local completed = false
 
@@ -61,6 +67,7 @@ else
 					completed = true
 					warn("-- timeout (" .. TIMEOUT .. "s): " .. entry.path)
 					write(entry.svc, entry.path, "-- decompilation timed out after " .. TIMEOUT .. "s")
+					active -= 1
 					done += 1
 				end
 			end)
@@ -70,11 +77,13 @@ else
 			completed = true
 
 			src = success and src or ("-- error: " .. tostring(src))
-			print("-- decompiled: " .. entry.path)
-			write(entry.svc, entry.path, src)
 			done += 1
+			print("-- [" .. done .. "/" .. #queue .. "] " .. entry.path)
+			write(entry.svc, entry.path, src)
+			active -= 1
 		end)
 	end
+
 	repeat task.wait() until done >= #queue
 end
 
