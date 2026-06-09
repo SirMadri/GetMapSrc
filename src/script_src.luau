@@ -33,13 +33,16 @@ return function(scr)
 	last = os.clock()
 	lock = false
 
-	local res = request({
+	local ok2, res = pcall(request, {
 		Url = "https://api.lua.expert/decompile",
 		Method = "POST",
 		Headers = { ["content-type"] = "application/json" },
 		Body = http:JSONEncode({ script = (base64_encode or encode)(bc) })
 	})
 
+	if not ok2 then
+		return "-- request() threw an error\n--[[\n"..tostring(res).."\n--]]"
+	end
 	if not res or res.StatusCode ~= 200 then
 		return "-- api request error\n--[[\n"..(res and res.Body or "no response").."\n--]]"
 	end

@@ -21,13 +21,12 @@ print("-- dumping: " .. game_name)
 print("-- your game may freeze while we look for scripts")
 
 local repo = loadstring(game:HttpGet("https://raw.githubusercontent.com/SirMadri/GetMapSrc/refs/heads/main/src/get_modules.luau"))()
-local result = {}
-local remotes = {}
 local queue = {}
+local write = repo.output(game_name)
+local TIMEOUT = config.timeout or 30
 
 for _, service in ipairs(config.services) do
 	print("-- reading: " .. service.Name)
-	result[service.Name] = {}
 
 	local scripts, found_remotes = repo.read_game(service)
 
@@ -37,29 +36,46 @@ for _, service in ipairs(config.services) do
 
 	if config.dump_remotes ~= false then
 		for path, meta in next, found_remotes do
-			remotes[service.Name] = remotes[service.Name] or {}
-			remotes[service.Name][path] = repo.remote_src(meta)
+			write(service.Name, path, repo.remote_src(meta), true)
 		end
 	end
 end
 
+print("-- " .. #queue .. " scripts queued")
+
 if config.use_threading == false then
 	for _, entry in next, queue do
 		print("-- decompiling: " .. entry.path)
-		result[entry.svc][entry.path] = repo.script_src(entry.mod)
+		local success, src = pcall(repo.script_src, entry.mod)
+		write(entry.svc, entry.path, success and src or ("-- error: " .. tostring(src)))
 	end
 else
-	print("-- spawning " .. #queue .. " threads")
+	print("-- spawning " .. #queue .. " threads (timeout: " .. TIMEOUT .. "s each)")
 	local done = 0
 	for _, entry in next, queue do
 		task.spawn(function()
-			result[entry.svc][entry.path] = repo.script_src(entry.mod)
+			local completed = false
+
+			task.delay(TIMEOUT, function()
+				if not completed then
+					completed = true
+					warn("-- timeout (" .. TIMEOUT .. "s): " .. entry.path)
+					write(entry.svc, entry.path, "-- decompilation timed out after " .. TIMEOUT .. "s")
+					done += 1
+				end
+			end)
+
+			local success, src = pcall(repo.script_src, entry.mod)
+			if completed then return end
+			completed = true
+
+			src = success and src or ("-- error: " .. tostring(src))
 			print("-- decompiled: " .. entry.path)
+			write(entry.svc, entry.path, src)
 			done += 1
 		end)
 	end
 	repeat task.wait() until done >= #queue
 end
 
-repo.output(result, remotes, game_name)
 print("-- done in " .. math.floor((os.clock() - start) * 100) / 100 .. "s")

@@ -6,26 +6,21 @@ local function mkdir(path)
 	end
 end
 
-return function(result, remotes, game_name)
+return function(game_name)
 	game_name = game_name:gsub('[*?"<>|]', "_"):gsub(":", "_")
 	local base = "_GetMapSrc/"..game_name.."/"..os.date("%H-%M-%S")
 	mkdir(base)
+	print("-- output dir: " .. base)
 
-	for service, files in next, result do
-		for path, src in next, files do
-			local full = base.."/"..service.."/"..path..".lua"
-			mkdir(full:match("(.+)/[^/]+$"))
-			local ok, err = pcall(writefile, full, src)
-			if not ok then warn("-- failed: "..err) else print("-- saved: "..full) end
+	return function(svc, path, src, is_remote)
+		local full
+		if is_remote then
+			full = base.."/Remotes/"..svc.."/"..path..".remote.lua"
+		else
+			full = base.."/"..svc.."/"..path..".lua"
 		end
-	end
-
-	for service, entries in next, remotes do
-		for path, src in next, entries do
-			local full = base.."/Remotes/"..service.."/"..path..".remote.lua"
-			mkdir(full:match("(.+)/[^/]+$"))
-			local ok, err = pcall(writefile, full, src)
-			if not ok then warn("-- failed: "..err) else print("-- saved remote: "..full) end
-		end
+		mkdir(full:match("(.+)/[^/]+$"))
+		local ok, err = pcall(writefile, full, src)
+		if not ok then warn("-- failed to write "..path..": "..err) end
 	end
 end
