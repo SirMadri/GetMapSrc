@@ -1,20 +1,20 @@
+local function sanitize(s)
+	return s:gsub('[\\*?"<>|]', "_"):gsub(":", "_")
+end
+
 local function mkdir(path)
 	local cur = ""
 	for p in path:gmatch("[^/]+") do
 		cur = cur ~= "" and cur.."/"..p or p
-		if not isfolder(cur) then makefolder(cur) end
+		if not isfolder(cur) then pcall(makefolder, cur) end
 	end
 end
 
 return function(game_name)
-	game_name = game_name:gsub('[*?"<>|]', "_"):gsub(":", "_")
+	game_name = sanitize(game_name)
 	local base = "_GetMapSrc/"..game_name.."/"..os.date("%H-%M-%S")
 	mkdir(base)
 	print("-- output dir: " .. base)
-
-	local function sanitize(s)
-		return s:gsub('[*?"<>|]', "_"):gsub(":", "_")
-	end
 
 	return function(svc, path, src, is_remote)
 		svc = sanitize(svc)
