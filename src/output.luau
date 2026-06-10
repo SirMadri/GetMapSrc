@@ -12,7 +12,13 @@ return function(game_name)
 	mkdir(base)
 	print("-- output dir: " .. base)
 
+	local function sanitize(s)
+		return s:gsub('[*?"<>|]', "_"):gsub(":", "_")
+	end
+
 	return function(svc, path, src, is_remote)
+		svc = sanitize(svc)
+		path = sanitize(path)
 		local full
 		if is_remote then
 			full = base.."/Remotes/"..svc.."/"..path..".remote.lua"
