@@ -1,5 +1,5 @@
 local function sanitize(s)
-	return s:gsub('[\\*?"<>|]', "_"):gsub(":", "_")
+	return (s:gsub('%c', '_'):gsub('[\\*?"<>|]', "_"):gsub(":", "_"):gsub("//+", "/"):gsub("/+$", ""))
 end
 
 local function mkdir(path)
