@@ -48,13 +48,19 @@ for _, service in ipairs(config.services) do
 	end
 
 	if config.dump_remotes ~= false then
+		local ri = 0
 		for path, meta in next, found_remotes do
+			ri += 1
+			if ri % 50 == 0 then task.wait() end
 			write_file(svc_name, path, repo.remote_src(meta), true)
 		end
 	end
 
 	if config.dump_bindables ~= false then
+		local bi = 0
 		for path, meta in next, bindables do
+			bi += 1
+			if bi % 50 == 0 then task.wait() end
 			write_file("_Bindables/" .. svc_name, path, repo.remote_src(meta))
 		end
 	end
@@ -64,7 +70,10 @@ for _, service in ipairs(config.services) do
 	end
 
 	if should_map then
+		local mi = 0
 		for path, obj in next, meta_instances do
+			mi += 1
+			if mi % 50 == 0 then task.wait() end
 			local ok, src = pcall(repo.instance_meta, obj)
 			if ok then write_file(svc_name, path .. "/_meta", src) end
 		end
