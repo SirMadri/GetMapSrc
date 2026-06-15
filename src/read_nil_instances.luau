@@ -13,6 +13,7 @@ local IGNORED_ROOTS = {
 	AvatarEditorService = true,
 	ProximityPromptTemplates = true,
 	Workspace = true,
+	_Index = true,
 }
 
 local function sanitize_segment(part)
