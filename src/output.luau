@@ -6,13 +6,15 @@ local function sanitize_name(s)
 	return s
 end
 
+local created_dirs = {}
+
 local function make_dir(path)
 	local current = ""
 	for segment in path:gmatch("[^/]+") do
 		current = current ~= "" and current .. "/" .. segment or segment
-		local ok, err = pcall(makefolder, current)
-		if not ok and not isfolder(current) then
-			warn("-- mkdir failed at: " .. current .. " | " .. tostring(err))
+		if not created_dirs[current] then
+			pcall(makefolder, current)
+			created_dirs[current] = true
 		end
 	end
 end
