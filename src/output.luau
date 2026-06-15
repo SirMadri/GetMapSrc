@@ -1,5 +1,5 @@
 local function sanitize_name(s)
-	return (s:gsub("[\128-\255]+", ""):gsub('%c', '_'):gsub('[\\*?"<>|]', "_"):gsub(":", "_"):gsub("//+", "/"):gsub("/+$", ""))
+	return (s:gsub("[\128-\255]+", ""):gsub('%c', '_'):gsub('[\\*?"<>|%[%]]', "_"):gsub(":", "_"):gsub("//+", "/"):gsub("/+$", ""):gsub("^%s+", ""):gsub("%s+$", ""))
 end
 
 local function make_dir(path)
