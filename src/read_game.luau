@@ -16,10 +16,20 @@ local VALUE_CLASSES    = {
 	Vector3Value = true, Color3Value = true, CFrameValue = true, ObjectValue = true,
 }
 
+local IGNORED_SEGMENTS = { node_modules = true }
+
+local function path_is_ignored(path)
+	for seg in path:gmatch("[^/]+") do
+		if IGNORED_SEGMENTS[seg] then return true end
+	end
+	return false
+end
+
 return function(service, dump_map)
 	local scripts, remotes, meta_instances, values, bindables = {}, {}, {}, {}, {}
 	for _, object in next, service:GetDescendants() do
 		local path = sanitize_path(object:GetFullName(), service.Name)
+		if path_is_ignored(path) then continue end
 		if SCRIPT_CLASSES[object.ClassName] then
 			scripts[path] = object
 		elseif REMOTE_CLASSES[object.ClassName] then

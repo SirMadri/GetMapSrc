@@ -23,6 +23,8 @@ return function(game_name)
 	make_dir(base_dir)
 	print("-- output dir: " .. base_dir)
 
+	local MAX_DEPTH = 30
+
 	return function(service_name, path, source, is_remote, is_script)
 		service_name = sanitize_name(service_name)
 		path = sanitize_name(path)
@@ -34,6 +36,8 @@ return function(game_name)
 		else
 			full_path = base_dir .. "/" .. service_name .. "/" .. path .. ".lua"
 		end
+		local _, depth = full_path:gsub("/", "")
+		if depth > MAX_DEPTH then return end
 		make_dir(full_path:match("(.+)/[^/]+$"))
 		local ok, err = pcall(writefile, full_path, source)
 		if not ok then warn("-- failed to write " .. path .. ": " .. err) end

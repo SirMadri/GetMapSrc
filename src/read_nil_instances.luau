@@ -14,6 +14,7 @@ local IGNORED_ROOTS = {
 	ProximityPromptTemplates = true,
 	Workspace = true,
 	_Index = true,
+	node_modules = true,
 }
 
 local function sanitize_segment(part)
