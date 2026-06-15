@@ -16,7 +16,7 @@ local VALUE_CLASSES    = {
 	Vector3Value = true, Color3Value = true, CFrameValue = true, ObjectValue = true,
 }
 
-return function(service, dump_map, map_max_depth)
+return function(service, dump_map)
 	local scripts, remotes, meta_instances, values, bindables = {}, {}, {}, {}, {}
 	for _, object in next, service:GetDescendants() do
 		local path = sanitize_path(object:GetFullName(), service.Name)
@@ -29,13 +29,10 @@ return function(service, dump_map, map_max_depth)
 		elseif VALUE_CLASSES[object.ClassName] then
 			local ok, val = pcall(function() return object.Value end)
 			values[path] = { class_name = object.ClassName, value = ok and val or nil }
-		elseif dump_map then
-			local depth = select(2, path:gsub("/", ""))
-			if depth < map_max_depth then
-				local is_gui = object:IsA("GuiObject") or object:IsA("LayerCollector") or object:IsA("UIBase")
-				if is_gui or #object:GetChildren() > 0 then
-					meta_instances[path] = object
-				end
+		elseif dump_map and #path <= 100 then
+			local is_gui = object:IsA("GuiObject") or object:IsA("LayerCollector") or object:IsA("UIBase")
+			if is_gui or #object:GetChildren() > 0 then
+				meta_instances[path] = object
 			end
 		end
 	end

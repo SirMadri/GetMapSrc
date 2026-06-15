@@ -16,7 +16,7 @@ return function(game_name)
 	make_dir(base_dir)
 	print("-- output dir: " .. base_dir)
 
-	return function(service_name, path, source, is_remote)
+	return function(service_name, path, source, is_remote, silent)
 		service_name = sanitize_name(service_name)
 		path = sanitize_name(path)
 		local full_path
@@ -27,6 +27,6 @@ return function(game_name)
 		end
 		make_dir(full_path:match("(.+)/[^/]+$"))
 		local ok, err = pcall(writefile, full_path, source)
-		if not ok then warn("-- failed to write " .. path .. ": " .. err) end
+		if not ok and not silent then warn("-- failed to write " .. path .. ": " .. err) end
 	end
 end
