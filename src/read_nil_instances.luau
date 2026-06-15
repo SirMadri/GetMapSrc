@@ -20,12 +20,13 @@ local function sanitize_segment(part)
 end
 
 local function build_path(root_name, object)
-	local full = object:GetFullName():gsub("^" .. root_name .. "%.?", "")
-	if full == "" then
+	local full_name = object:GetFullName()
+	local rest = full_name:sub(#root_name + 2)
+	if rest == "" then
 		return sanitize_segment(root_name)
 	end
 	local parts = { sanitize_segment(root_name) }
-	for segment in full:gmatch("[^%.]+") do
+	for segment in rest:gmatch("[^%.]+") do
 		parts[#parts + 1] = sanitize_segment(segment)
 	end
 	return table.concat(parts, "/"):gsub("//+", "/"):gsub("^/+", ""):gsub("/+$", "")

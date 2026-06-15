@@ -6,7 +6,7 @@ local function make_dir(path)
 	local current = ""
 	for segment in path:gmatch("[^/]+") do
 		current = current ~= "" and current .. "/" .. segment or segment
-		if not isfolder(current) then pcall(makefolder, current) end
+		pcall(makefolder, current)
 	end
 end
 
