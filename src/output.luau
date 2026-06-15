@@ -1,5 +1,9 @@
 local function sanitize_name(s)
-	return (s:gsub("[\128-\255]+", ""):gsub('%c', '_'):gsub('[\\*?"<>|%[%]]', "_"):gsub(":", "_"):gsub("//+", "/"):gsub("/+$", ""):gsub("^%s+", ""):gsub("%s+$", ""))
+	s = s:gsub("[\128-\255]+", ""):gsub('%c', '_')
+	s = s:gsub('[\\*?"<>|%[%]]', "_"):gsub(":", "_")
+	s = s:gsub("//+", "/"):gsub("/+$", "")
+	s = s:gsub("^%s+", ""):gsub("%s+$", "")
+	return s
 end
 
 local function make_dir(path)
@@ -9,10 +13,8 @@ local function make_dir(path)
 		local ok, err = pcall(makefolder, current)
 		if not ok and not isfolder(current) then
 			warn("-- mkdir failed at: " .. current .. " | " .. tostring(err))
-			return false
 		end
 	end
-	return true
 end
 
 return function(game_name)

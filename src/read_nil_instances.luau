@@ -12,6 +12,7 @@ local IGNORED_ROOTS = {
 	BubbleChatSoundManager = true,
 	AvatarEditorService = true,
 	ProximityPromptTemplates = true,
+	Workspace = true,
 }
 
 local function sanitize_segment(part)
