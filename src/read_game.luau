@@ -27,7 +27,10 @@ end
 
 return function(service, dump_map)
 	local scripts, remotes, meta_instances, values, bindables = {}, {}, {}, {}, {}
+	local i = 0
 	for _, object in next, service:GetDescendants() do
+		i += 1
+		if i % 300 == 0 then task.wait() end
 		local path = sanitize_path(object:GetFullName(), service.Name)
 		if path_is_ignored(path) then continue end
 		if SCRIPT_CLASSES[object.ClassName] then
