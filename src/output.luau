@@ -23,7 +23,7 @@ return function(game_name)
 	make_dir(base_dir)
 	print("-- output dir: " .. base_dir)
 
-	local MAX_DEPTH = 25
+	local MAX_DEPTH = 12
 
 	return function(service_name, path, source, is_remote, is_script)
 		service_name = sanitize_name(service_name)
