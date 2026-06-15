@@ -37,7 +37,7 @@ return function(game_name)
 			full_path = base_dir .. "/" .. service_name .. "/" .. path .. ".lua"
 		end
 		local _, depth = full_path:gsub("/", "")
-		if depth > MAX_DEPTH then return end
+		if depth > MAX_DEPTH or #full_path > 200 then return end
 		make_dir(full_path:match("(.+)/[^/]+$"))
 		local ok, err = pcall(writefile, full_path, source)
 		if not ok then warn("-- failed to write " .. path .. ": " .. err) end
