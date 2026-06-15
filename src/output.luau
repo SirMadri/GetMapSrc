@@ -18,12 +18,12 @@ local function make_dir(path)
 end
 
 return function(game_name)
-	game_name = sanitize_name(game_name):sub(1, 25)
+	game_name = sanitize_name(game_name):sub(1, 25):gsub("%s+$", "")
 	local base_dir = "_GetMapSrc/" .. game_name
 	make_dir(base_dir)
 	print("-- output dir: " .. base_dir)
 
-	local MAX_DEPTH = 12
+	local MAX_DEPTH = 20
 
 	return function(service_name, path, source, is_remote, is_script)
 		service_name = sanitize_name(service_name)
