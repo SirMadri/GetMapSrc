@@ -58,10 +58,10 @@ return function()
 			remotes[root_path] = { Name = root.Name, ClassName = root.ClassName, FullName = root:GetFullName() }
 		end
 
-		local i = 0
-		for _, object in next, root:GetDescendants() do
-			i += 1
-			if i % 300 == 0 then task.wait() end
+		local descendants = root:GetDescendants()
+		for i = 1, #descendants do
+			if i % 100 == 1 then task.wait() end
+			local object = descendants[i]
 			local path = build_path(root.Name, object)
 			if path_contains_ignored(path) then continue end
 			if object:IsA("ModuleScript") or object:IsA("LocalScript") then
