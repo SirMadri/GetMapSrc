@@ -38,34 +38,35 @@ local dump_map = config.dump_map ~= false
 local map_services = config.map_services
 
 for _, service in ipairs(config.services) do
-	print("-- reading: " .. service.Name)
-	local should_map = dump_map and (map_services == nil or map_services[service.Name])
+	local svc_name = service.ClassName
+	print("-- reading: " .. svc_name)
+	local should_map = dump_map and (map_services == nil or map_services[svc_name])
 	local scripts, found_remotes, meta_instances, values, bindables = repo.read_game(service, should_map)
 
 	for path, mod in next, scripts do
-		queue[#queue + 1] = { service = service.Name, path = path, mod = mod }
+		queue[#queue + 1] = { service = svc_name, path = path, mod = mod }
 	end
 
 	if config.dump_remotes ~= false then
 		for path, meta in next, found_remotes do
-			write_file(service.Name, path, repo.remote_src(meta), true)
+			write_file(svc_name, path, repo.remote_src(meta), true)
 		end
 	end
 
 	if config.dump_bindables ~= false then
 		for path, meta in next, bindables do
-			write_file("_Bindables/" .. service.Name, path, repo.remote_src(meta))
+			write_file("_Bindables/" .. svc_name, path, repo.remote_src(meta))
 		end
 	end
 
 	if config.dump_values ~= false and next(values) then
-		write_file("_Values", service.Name, repo.value_src(service.Name, values))
+		write_file("_Values", svc_name, repo.value_src(svc_name, values))
 	end
 
 	if should_map then
 		for path, obj in next, meta_instances do
 			local ok, src = pcall(repo.instance_meta, obj)
-			if ok then write_file(service.Name, path .. "/_meta", src) end
+			if ok then write_file(svc_name, path .. "/_meta", src) end
 		end
 	end
 end
