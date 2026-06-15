@@ -6,8 +6,13 @@ local function make_dir(path)
 	local current = ""
 	for segment in path:gmatch("[^/]+") do
 		current = current ~= "" and current .. "/" .. segment or segment
-		pcall(makefolder, current)
+		local ok, err = pcall(makefolder, current)
+		if not ok and not isfolder(current) then
+			warn("-- mkdir failed at: " .. current .. " | " .. tostring(err))
+			return false
+		end
 	end
+	return true
 end
 
 return function(game_name)
