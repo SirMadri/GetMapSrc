@@ -1,7 +1,8 @@
 local function sanitize_path(full_name, service_name)
 	local path = full_name:gsub("^" .. service_name .. "%.", "")
 	path = path:gsub("[^.]+", function(part)
-		return (part:gsub("[\128-\255]+", ""):gsub('%c', '_'):gsub('[\\/*?"<>|]', "_"):gsub(":", "_"):gsub("%s+$", ""):gsub("^%s+", ""))
+		part = part:gsub("[\128-\255]+", ""):gsub('%c', '_'):gsub('[\\/*?"<>|]', "_"):gsub(":", "_"):gsub("%s+$", ""):gsub("^%s+", "")
+		return part:sub(1, 48)
 	end)
 
 	return path:gsub("%.", "/"):gsub("//+", "/"):gsub("^/+", ""):gsub("/+$", "")
