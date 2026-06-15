@@ -1,14 +1,15 @@
 return function(service)
-	local t = {}
-	for _, v in next, service:GetDescendants() do
-		if v:IsA("RemoteEvent") or v:IsA("RemoteFunction") or v:IsA("UnreliableRemoteEvent") then
-			local path = v:GetFullName():gsub("^"..service.Name.."%.", ""):gsub("%.", "/")
-			t[path:gsub('[*?"<>|]', "_"):gsub(":", "_")] = {
-				Name = v.Name,
-				ClassName = v.ClassName,
-				FullName = v:GetFullName(),
+	local remotes = {}
+	for _, object in next, service:GetDescendants() do
+		if object:IsA("RemoteEvent") or object:IsA("RemoteFunction") or object:IsA("UnreliableRemoteEvent") then
+			local path = object:GetFullName():gsub("^" .. service.Name .. "%.", ""):gsub("%.", "/"):gsub('[*?"<>|]', "_"):gsub(":", "_")
+			remotes[path] = {
+				Name = object.Name,
+				ClassName = object.ClassName,
+				FullName = object:GetFullName(),
 			}
 		end
 	end
-	return t
+
+	return remotes
 end

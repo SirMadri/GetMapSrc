@@ -1,17 +1,23 @@
-local url = "https://raw.githubusercontent.com/SirMadri/GetMapSrc/refs/heads/main/src"
-local repo, n = {}, 4
+local base_url = "https://raw.githubusercontent.com/SirMadri/GetMapSrc/refs/heads/testing/src"
+local repo = {}
+local pending = 9
 
-for k, f in next, {
-	script_src  = "/script_src.luau",
-	read_game   = "/read_game.luau",
-	remote_src  = "/remote_src.luau",
-	output      = "/output.luau",
+for module_name, file_path in next, {
+	unc                      = "/UNC.luau",
+	script_src               = "/script_src.luau",
+	read_game                = "/read_game.luau",
+	read_nil_instances       = "/read_nil_instances.luau",
+	read_collection_service  = "/read_collection_service.luau",
+	remote_src               = "/remote_src.luau",
+	value_src                = "/value_src.luau",
+	instance_meta            = "/instance_meta.luau",
+	output                   = "/output.luau",
 } do
 	task.spawn(function()
-		repo[k] = loadstring(game:HttpGet(url..f))()
-		n -= 1
+		repo[module_name] = loadstring(game:HttpGet(base_url .. file_path))()
+		pending -= 1
 	end)
 end
 
-repeat task.wait() until n == 0
+repeat task.wait() until pending == 0
 return repo

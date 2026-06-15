@@ -1,51 +1,56 @@
--- Script made by https://lua.expert
-
 assert(getscriptbytecode, "exploit does not support getscriptbytecode.")
 
-local last = 0
-local lock = false
+local last_request_time = 0
+local request_lock = false
 local http = cloneref and cloneref(game:GetService("HttpService")) or game:GetService("HttpService")
-local b64 = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/"
+local BASE64_CHARS = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/"
 
-local function encode(data)
-	local t, pad = {}, #data % 3
+local function encode_base64(data)
+	local result, padding = {}, #data % 3
 	for i = 1, #data, 3 do
-		local a, b, c = data:byte(i), data:byte(i+1) or 0, data:byte(i+2) or 0
-		local n = a*65536 + b*256 + c
-		t[#t+1] = b64:sub(math.floor(n/262144)%64+1, math.floor(n/262144)%64+1)
-		t[#t+1] = b64:sub(math.floor(n/4096)%64+1, math.floor(n/4096)%64+1)
-		t[#t+1] = b64:sub(math.floor(n/64)%64+1, math.floor(n/64)%64+1)
-		t[#t+1] = b64:sub(n%64+1, n%64+1)
+		local a, b, c = data:byte(i), data:byte(i + 1) or 0, data:byte(i + 2) or 0
+		local n = a * 65536 + b * 256 + c
+		result[#result + 1] = BASE64_CHARS:sub(math.floor(n / 262144) % 64 + 1, math.floor(n / 262144) % 64 + 1)
+		result[#result + 1] = BASE64_CHARS:sub(math.floor(n / 4096) % 64 + 1, math.floor(n / 4096) % 64 + 1)
+		result[#result + 1] = BASE64_CHARS:sub(math.floor(n / 64) % 64 + 1, math.floor(n / 64) % 64 + 1)
+		result[#result + 1] = BASE64_CHARS:sub(n % 64 + 1, n % 64 + 1)
 	end
-	if pad == 1 then t[#t-1], t[#t] = "=", "="
-	elseif pad == 2 then t[#t] = "=" end
-	return table.concat(t)
+	if padding == 1 then result[#result - 1], result[#result] = "=", "="
+	elseif padding == 2 then result[#result] = "=" end
+	return table.concat(result)
 end
 
-return function(scr)
-	local ok, bc = pcall(getscriptbytecode, scr)
-	if not ok then return "-- failed to read script bytecode\n--[[\n"..bc.."\n--]]" end
-
-	while lock do task.wait() end
-	lock = true
-	local elapsed = os.clock() - last
+local function wait_rate_limit()
+	while request_lock do task.wait() end
+	request_lock = true
+	local elapsed = os.clock() - last_request_time
 	if elapsed < 0.12 then task.wait(0.12 - elapsed) end
-	last = os.clock()
-	lock = false
+	last_request_time = os.clock()
+	request_lock = false
+end
 
-	local ok2, res = pcall(request, {
+return function(script_obj)
+	local bytecode_ok, bytecode = pcall(getscriptbytecode, script_obj)
+	if not bytecode_ok then
+		return "-- failed to read script bytecode\n--[[\n" .. bytecode .. "\n--]]"
+	end
+
+	wait_rate_limit()
+
+	local request_ok, response = pcall(request, {
 		Url = "https://api.lua.expert/decompile",
 		Method = "POST",
 		Headers = { ["content-type"] = "application/json" },
-		Body = http:JSONEncode({ script = (base64_encode or encode)(bc) })
+		Body = http:JSONEncode({ script = (base64_encode or encode_base64)(bytecode) }),
 	})
 
-	if not ok2 then
-		return "-- request() threw an error\n--[[\n"..tostring(res).."\n--]]"
+	if not request_ok then
+		return "-- request() threw an error\n--[[\n" .. tostring(response) .. "\n--]]"
 	end
-	if not res or res.StatusCode ~= 200 then
-		return "-- api request error\n--[[\n"..(res and res.Body or "no response").."\n--]]"
+	if not response or response.StatusCode ~= 200 then
+		return "-- api request error\n--[[\n" .. (response and response.Body or "no response") .. "\n--]]"
 	end
-	local src = res.Body:gsub("^%-%- https://lua%.expert/%s*\n?", "")
-	return "-- dumped by https://github.com/SirMadri/GetMapSrc\n-- decompiled by https://lua.expert/\n" .. src
+
+	local source = response.Body:gsub("^%-%- https://lua%.expert/%s*\n?", "")
+	return "-- dumped by https://github.com/SirMadri/GetMapSrc\n-- decompiled by https://lua.expert/\n" .. source
 end

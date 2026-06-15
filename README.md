@@ -1,22 +1,38 @@
-# 🗺️ GetMapSrc
+# GetMapSrc
 
-> Open-source Roblox script & remote dumper.
-> Dump and decompile every `Script` from a Roblox game - straight from your executor.
-
----
-
-## 💡 What does it do?
-
-It scans through services like `ReplicatedStorage`, `ReplicatedFirst`, and others, grabs the bytecode from every `Script`, `LocalScript` and `ModuleScript` it finds, decompiles it via the [lua.expert](https://lua.expert) API, and saves everything to your workspace folder - preserving the original folder structure.
+> Open-source Roblox script, remote & map dumper.  
+> Dumps and decompiles every `Script`, `LocalScript` and `ModuleScript` from a Roblox game — straight from your executor.
 
 ---
 
-## ⚡ Quick start
+## What does it do?
 
-Execute this into your executor:
+- Scans services like `ReplicatedStorage`, `Workspace`, etc.
+- Grabs bytecode from every script and decompiles it via the [lua.expert](https://lua.expert) API
+- Dumps `RemoteEvent`, `RemoteFunction` and `UnreliableRemoteEvent` metadata
+- Generates `_meta.lua` files for every instance that has children, and for all `GuiObject`/`UIBase` elements (including leaf elements like buttons and labels) — preserving the full layout with `UDim2` positions, colors, text, fonts and more
+- Optionally scans nil-parented instances via `getnilinstances`
+- Saves everything preserving the original folder structure
+
+---
+
+## Quick start
+
+```lua
+loadstring(game:HttpGet("https://raw.githubusercontent.com/SirMadri/GetMapSrc/main/src/loader.luau"))()
+```
+
+That's it. Runs with defaults and saves to your executor workspace folder.
+
+---
+
+## Custom config
+
+Set `getgenv().dumper` **before** running to control behavior:
 
 ```lua
 getgenv().dumper = {
+    -- services to scan (default: RS, RF, StarterPlayer, StarterGui, Workspace)
     services = {
         game:GetService("ReplicatedStorage"),
         game:GetService("ReplicatedFirst"),
@@ -25,71 +41,131 @@ getgenv().dumper = {
         game:GetService("Workspace"),
     },
 
-    use_threading = true,
-    dump_remotes = true
+    use_threading = true,       -- parallel decompilation (faster, default: true)
+    dump_remotes = true,        -- dump RemoteEvent / RemoteFunction (default: true)
+    dump_map = true,            -- generate _meta.lua for instances with children (default: true)
+    dump_collection = true,     -- dump CollectionService tags (default: true)
+    dump_values = true,         -- dump StringValue/NumberValue/BoolValue/etc (default: true)
+    dump_bindables = true,      -- dump BindableEvent / BindableFunction (default: true)
+    dump_nil_instances = true,  -- scan getnilinstances() if supported (default: true)
+
+    -- limit _meta.lua generation to specific services only (default: all services)
+    -- map_services = { Workspace = true },
+
+    -- max instances listed per CollectionService tag (default: 500, nil = unlimited)
+    -- collection_max_per_tag = 500,
 }
+
 loadstring(game:HttpGet("https://raw.githubusercontent.com/SirMadri/GetMapSrc/main/src/loader.luau"))()
 ```
 
-Done. The script handles everything else.
-
 ---
 
-## ⚙️ Custom config
+## Output structure
 
-Want to choose which services get scanned? Set `getgenv().dumper` **before** running:
+```
+_GetMapSrc/
+└── GameName/
+    └── 14-30-57/
+        ├── Workspace/
+        │   ├── Coin/
+        │   │   └── _meta.lua           -- Part properties, attributes, tags, children
+        │   ├── Characters/
+        │   │   ├── _meta.lua           -- Folder descriptor
+        │   │   └── SirMadri/
+        │   │       └── _meta.lua       -- Model with WorldPivot, PrimaryPart, etc.
+        │   └── CoinHandler.lua         -- decompiled LocalScript
+        ├── ReplicatedStorage/
+        │   └── CoinService.lua         -- decompiled ModuleScript
+        ├── Remotes/
+        │   └── ReplicatedStorage/
+        │       └── CollectCoin.remote.lua
+        ├── _CollectionService/         -- one file per tag
+        │   ├── Collectible.lua         -- lists all tagged instance paths
+        │   └── PlayerCharacter.lua     -- truncated if > collection_max_per_tag
+        ├── StarterGui/
+        │   └── MainMenu/
+        │       ├── _meta.lua           -- ScreenGui (enabled, z_index_behavior)
+        │       └── Background/
+        │           ├── _meta.lua       -- Frame (position, size, background_color3...)
+        │           ├── PlayButton/
+        │           │   └── _meta.lua  -- TextButton (text, font, text_color3, UDim2...)
+        │           └── QuitButton/
+        │               └── _meta.lua  -- leaf GuiObject, no children needed
+        ├── _Values/
+        │   ├── ReplicatedStorage.lua   -- all StringValue/NumberValue/BoolValue/etc per service
+        │   └── Workspace.lua
+        ├── _Bindables/
+        │   └── ReplicatedStorage/
+        │       └── Events/
+        │           ├── OnCoinCollected.lua   -- BindableEvent
+        │           └── GetPlayerData.lua     -- BindableFunction
+        └── nilinstances/               -- only if executor supports getnilinstances
+            ├── HiddenCoinHandler.lua   -- nil-parented script
+            └── HiddenFolder/
+                ├── _meta.lua           -- parent = "nil"
+                └── HiddenModule.lua
+```
+
+### `_meta.lua` format
 
 ```lua
-getgenv().dumper = {
-    services = {
-        game:GetService("ReplicatedStorage"),
-        game:GetService("ReplicatedFirst"),
-        game:GetService("StarterPlayer"),
-        game:GetService("StarterGui"),
-        game:GetService("Workspace"),
-        -- add whatever you need
+return {
+    name = "Coin",
+    class_name = "Part",
+
+    properties = {
+        anchored = true,
+        can_collide = false,
+        material = "Neon",
+        color = {255, 215, 0},
+        size = { x = 2, y = 2, z = 2 },
+        position = { x = 150, y = 10, z = 320 },
     },
 
-    use_threading = true, -- faster way to decompile scripts 
-    dump_remotes = true -- dump remotes (RemoteEvent, RemoteFunction, UnreliableRemoteEvent)
+    attributes = {
+        coin_value = 50,
+        respawn_time = 30,
+    },
+
+    tags = { "Collectible", "Coin" },
+
+    references = {
+        parent = "Workspace.Coins",
+    },
+
+    statistics = {
+        descendants = 3,
+        children = 3,
+    },
+
+    children = {
+        "ProximityPrompt",
+        "Highlight",
+        "BillboardGui",
+    },
 }
-
-loadstring(game:HttpGet("https://raw.githubusercontent.com/SirMadri/GetMapSrc/main/src/loader.luau"))()
 ```
 
-By default it scans `ReplicatedStorage`, `ReplicatedFirst`, `StarterPlayer`, `StarterGui`, `Workspace`.
+See [`output_example/`](output_example/) for a full realistic example.
 
 ---
 
-## 📁 Output structure
+## Executor requirements
 
-Files get saved to your workspace like this:
+| API | Required |
+|---|---|
+| `getscriptbytecode` | Yes |
+| `request` | Yes |
+| `game:HttpGet` | Yes |
+| `isfolder` / `makefolder` / `writefile` | Yes |
+| `getgenv` | Yes |
+| `cloneref` | No — falls back to passthrough |
+| `getnilinstances` | No — nil instance scan skipped if missing |
+| `base64_encode` | No — built-in fallback used |
 
-```
-GameName/
-└── 14-30-57/
-    ├── ReplicatedStorage/
-    │   └── SomeModule.lua
-    ├── ReplicatedFirst/
-    │   └── Loader.lua
-    └── Remotes/
-        └── ReplicatedStorage/
-            └── SomeRemote.remote.lua
-```
+The loader auto-detects which APIs are available via `UNC.luau` and warns you if something critical is missing.
 
 ---
 
-## 🧩 Executor requirements
-
-Your executor needs to support these APIs:
-
-| API 
-|---
-| `getscriptbytecode` 
-| `request` 
-| `game:HttpGet` 
-| `isfolder` / `makefolder` / `writefile` 
-| `getgenv` 
-| `cloneref` *(optional)* 
-
-> Made by SirMadri | `sirmadrl`
+> Made by SirMadri | [github.com/SirMadri/GetMapSrc](https://github.com/SirMadri/GetMapSrc)

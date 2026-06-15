@@ -1,32 +1,32 @@
-local function sanitize(s)
-	return (s:gsub('%c', '_'):gsub('[\\*?"<>|]', "_"):gsub(":", "_"):gsub("//+", "/"):gsub("/+$", ""))
+local function sanitize_name(s)
+	return (s:gsub("[\128-\255]+", ""):gsub('%c', '_'):gsub('[\\*?"<>|]', "_"):gsub(":", "_"):gsub("//+", "/"):gsub("/+$", ""))
 end
 
-local function mkdir(path)
-	local cur = ""
-	for p in path:gmatch("[^/]+") do
-		cur = cur ~= "" and cur.."/"..p or p
-		if not isfolder(cur) then pcall(makefolder, cur) end
+local function make_dir(path)
+	local current = ""
+	for segment in path:gmatch("[^/]+") do
+		current = current ~= "" and current .. "/" .. segment or segment
+		if not isfolder(current) then pcall(makefolder, current) end
 	end
 end
 
 return function(game_name)
-	game_name = sanitize(game_name)
-	local base = "_GetMapSrc/"..game_name.."/"..os.date("%H-%M-%S")
-	mkdir(base)
-	print("-- output dir: " .. base)
+	game_name = sanitize_name(game_name)
+	local base_dir = "_GetMapSrc/" .. game_name .. "/" .. os.date("%H-%M-%S")
+	make_dir(base_dir)
+	print("-- output dir: " .. base_dir)
 
-	return function(svc, path, src, is_remote)
-		svc = sanitize(svc)
-		path = sanitize(path)
-		local full
+	return function(service_name, path, source, is_remote)
+		service_name = sanitize_name(service_name)
+		path = sanitize_name(path)
+		local full_path
 		if is_remote then
-			full = base.."/Remotes/"..svc.."/"..path..".remote.lua"
+			full_path = base_dir .. "/Remotes/" .. service_name .. "/" .. path .. ".remote.lua"
 		else
-			full = base.."/"..svc.."/"..path..".lua"
+			full_path = base_dir .. "/" .. service_name .. "/" .. path .. ".lua"
 		end
-		mkdir(full:match("(.+)/[^/]+$"))
-		local ok, err = pcall(writefile, full, src)
-		if not ok then warn("-- failed to write "..path..": "..err) end
+		make_dir(full_path:match("(.+)/[^/]+$"))
+		local ok, err = pcall(writefile, full_path, source)
+		if not ok then warn("-- failed to write " .. path .. ": " .. err) end
 	end
 end

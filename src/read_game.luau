@@ -1,15 +1,40 @@
-return function(service)
-	local scripts, remotes = {}, {}
-	for _, v in next, service:GetDescendants() do
-		local path = v:GetFullName():gsub("^"..service.Name.."%.", "")
-		path = path:gsub("[^.]+", function(part)
-			return (part:gsub('%c', '_'):gsub('[\\/*?"<>|]', "_"):gsub(":", "_"):gsub("%s+$", ""):gsub("^%s+", ""))
-		end):gsub("%.", "/"):gsub("//+", "/"):gsub("^/+", ""):gsub("/+$", "")
-		if v:IsA("ModuleScript") or v:IsA("Script") then
-			scripts[path] = v
-		elseif v:IsA("RemoteEvent") or v:IsA("RemoteFunction") or v:IsA("UnreliableRemoteEvent") then
-			remotes[path] = { Name = v.Name, ClassName = v.ClassName, FullName = v:GetFullName() }
+local function sanitize_path(full_name, service_name)
+	local path = full_name:gsub("^" .. service_name .. "%.", "")
+	path = path:gsub("[^.]+", function(part)
+		return (part:gsub("[\128-\255]+", ""):gsub('%c', '_'):gsub('[\\/*?"<>|]', "_"):gsub(":", "_"):gsub("%s+$", ""):gsub("^%s+", ""))
+	end)
+
+	return path:gsub("%.", "/"):gsub("//+", "/"):gsub("^/+", ""):gsub("/+$", "")
+end
+
+local SCRIPT_CLASSES   = { ModuleScript = true, Script = true }
+local REMOTE_CLASSES   = { RemoteEvent = true, RemoteFunction = true, UnreliableRemoteEvent = true }
+local BINDABLE_CLASSES = { BindableEvent = true, BindableFunction = true }
+local VALUE_CLASSES    = {
+	StringValue = true, NumberValue = true, IntValue = true, BoolValue = true,
+	Vector3Value = true, Color3Value = true, CFrameValue = true, ObjectValue = true,
+}
+
+return function(service, dump_map)
+	local scripts, remotes, meta_instances, values, bindables = {}, {}, {}, {}, {}
+	for _, object in next, service:GetDescendants() do
+		local path = sanitize_path(object:GetFullName(), service.Name)
+		if SCRIPT_CLASSES[object.ClassName] then
+			scripts[path] = object
+		elseif REMOTE_CLASSES[object.ClassName] then
+			remotes[path] = { Name = object.Name, ClassName = object.ClassName, FullName = object:GetFullName() }
+		elseif BINDABLE_CLASSES[object.ClassName] then
+			bindables[path] = { Name = object.Name, ClassName = object.ClassName, FullName = object:GetFullName() }
+		elseif VALUE_CLASSES[object.ClassName] then
+			local ok, val = pcall(function() return object.Value end)
+			values[path] = { class_name = object.ClassName, value = ok and val or nil }
+		elseif dump_map then
+			local is_gui = object:IsA("GuiObject") or object:IsA("LayerCollector") or object:IsA("UIBase")
+			if is_gui or #object:GetChildren() > 0 then
+				meta_instances[path] = object
+			end
 		end
 	end
-	return scripts, remotes
+
+	return scripts, remotes, meta_instances, values, bindables
 end
