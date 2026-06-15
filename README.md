@@ -1,14 +1,14 @@
 # GetMapSrc
 
 > Open-source Roblox script, remote & map dumper.  
-> Dumps and decompiles every `Script`, `LocalScript` and `ModuleScript` from a Roblox game — straight from your executor.
+> Dumps and decompiles every `LocalScript` and `ModuleScript` from a Roblox game — straight from your executor.
 
 ---
 
 ## What does it do?
 
 - Scans services like `ReplicatedStorage`, `Workspace`, etc.
-- Grabs bytecode from every script and decompiles it via the [lua.expert](https://lua.expert) API
+- Grabs bytecode from every `LocalScript` and `ModuleScript` and decompiles it via the [lua.expert](https://lua.expert) API
 - Dumps `RemoteEvent`, `RemoteFunction` and `UnreliableRemoteEvent` metadata
 - Generates `_meta.lua` files for every instance that has children, and for all `GuiObject`/`UIBase` elements (including leaf elements like buttons and labels) — preserving the full layout with `UDim2` positions, colors, text, fonts and more
 - Optionally scans nil-parented instances via `getnilinstances`

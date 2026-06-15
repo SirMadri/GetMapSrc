@@ -28,7 +28,7 @@ return function()
 
 		for _, object in next, root:GetDescendants() do
 			local path = build_path(root.Name, object)
-			if object:IsA("ModuleScript") or object:IsA("Script") then
+			if object:IsA("ModuleScript") or object:IsA("LocalScript") then
 				scripts[path] = object
 			elseif object:IsA("RemoteEvent") or object:IsA("RemoteFunction") or object:IsA("UnreliableRemoteEvent") then
 				remotes[path] = { Name = object.Name, ClassName = object.ClassName, FullName = object:GetFullName() }

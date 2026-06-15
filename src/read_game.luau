@@ -7,7 +7,7 @@ local function sanitize_path(full_name, service_name)
 	return path:gsub("%.", "/"):gsub("//+", "/"):gsub("^/+", ""):gsub("/+$", "")
 end
 
-local SCRIPT_CLASSES   = { ModuleScript = true, Script = true }
+local SCRIPT_CLASSES   = { ModuleScript = true, LocalScript = true }
 local REMOTE_CLASSES   = { RemoteEvent = true, RemoteFunction = true, UnreliableRemoteEvent = true }
 local BINDABLE_CLASSES = { BindableEvent = true, BindableFunction = true }
 local VALUE_CLASSES    = {
