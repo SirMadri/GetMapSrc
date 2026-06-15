@@ -5,6 +5,13 @@ local IGNORED_ROOTS = {
 	LuaPackages = true,
 	GamepadMenu = true,
 	VideoRecordingFolder = true,
+	PreRobuxPrompt = true,
+	RobloxPromptGui = true,
+	TopBarApp = true,
+	VoiceChatGui = true,
+	BubbleChatSoundManager = true,
+	AvatarEditorService = true,
+	ProximityPromptTemplates = true,
 }
 
 local function sanitize_segment(part)
@@ -24,6 +31,15 @@ local function build_path(root_name, object)
 	return table.concat(parts, "/"):gsub("//+", "/"):gsub("^/+", ""):gsub("/+$", "")
 end
 
+local function path_contains_ignored(path)
+	local first = true
+	for seg in path:gmatch("[^/]+") do
+		if first then first = false; continue end
+		if IGNORED_ROOTS[seg] then return true end
+	end
+	return false
+end
+
 return function()
 	local scripts, remotes = {}, {}
 
@@ -39,6 +55,7 @@ return function()
 
 		for _, object in next, root:GetDescendants() do
 			local path = build_path(root.Name, object)
+			if path_contains_ignored(path) then continue end
 			if object:IsA("ModuleScript") or object:IsA("LocalScript") then
 				scripts[path] = object
 			elseif object:IsA("RemoteEvent") or object:IsA("RemoteFunction") or object:IsA("UnreliableRemoteEvent") then
