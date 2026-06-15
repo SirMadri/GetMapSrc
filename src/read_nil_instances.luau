@@ -15,6 +15,7 @@ local IGNORED_ROOTS = {
 	Workspace = true,
 	_Index = true,
 	node_modules = true,
+	rbxts_include = true,
 }
 
 local function sanitize_segment(part)

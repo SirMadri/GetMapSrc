@@ -16,7 +16,7 @@ local VALUE_CLASSES    = {
 	Vector3Value = true, Color3Value = true, CFrameValue = true, ObjectValue = true,
 }
 
-local IGNORED_SEGMENTS = { node_modules = true }
+local IGNORED_SEGMENTS = { node_modules = true, rbxts_include = true }
 
 local function path_is_ignored(path)
 	for seg in path:gmatch("[^/]+") do
