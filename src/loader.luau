@@ -35,12 +35,13 @@ local write_file = repo.output(game_name)
 local TIMEOUT = 60
 
 local dump_map = config.dump_map ~= false
+local map_max_depth = config.map_max_depth or 6
 local map_services = config.map_services
 
 for _, service in ipairs(config.services) do
 	print("-- reading: " .. service.Name)
 	local should_map = dump_map and (map_services == nil or map_services[service.Name])
-	local scripts, found_remotes, meta_instances, values, bindables = repo.read_game(service, should_map)
+	local scripts, found_remotes, meta_instances, values, bindables = repo.read_game(service, should_map, map_max_depth)
 
 	for path, mod in next, scripts do
 		queue[#queue + 1] = { service = service.Name, path = path, mod = mod }
