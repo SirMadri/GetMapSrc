@@ -1,6 +1,15 @@
+local IGNORED_ROOTS = {
+	CoreGui = true,
+	CorePackages = true,
+	RobloxGui = true,
+	LuaPackages = true,
+	GamepadMenu = true,
+	VideoRecordingFolder = true,
+}
+
 local function sanitize_segment(part)
 	part = part:gsub("[\128-\255]+", ""):gsub('%c', '_'):gsub('[\\/*?"<>|]', "_"):gsub(":", "_"):gsub("%s+$", ""):gsub("^%s+", "")
-	return part:sub(1, 48)
+	return part:sub(1, 25)
 end
 
 local function build_path(root_name, object)
@@ -19,6 +28,7 @@ return function()
 	local scripts, remotes = {}, {}
 
 	for _, root in next, getnilinstances() do
+		if IGNORED_ROOTS[root.Name] then continue end
 		local root_path = sanitize_segment(root.Name)
 
 		if root:IsA("ModuleScript") or root:IsA("Script") then

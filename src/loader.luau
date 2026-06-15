@@ -65,7 +65,7 @@ for _, service in ipairs(config.services) do
 	if should_map then
 		for path, obj in next, meta_instances do
 			local ok, src = pcall(repo.instance_meta, obj)
-			if ok then write_file(service.Name, path .. "/_meta", src, false, true) end
+			if ok then write_file(service.Name, path .. "/_meta", src) end
 		end
 	end
 end

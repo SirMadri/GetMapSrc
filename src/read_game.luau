@@ -2,7 +2,7 @@ local function sanitize_path(full_name, service_name)
 	local path = full_name:gsub("^" .. service_name .. "%.", "")
 	path = path:gsub("[^.]+", function(part)
 		part = part:gsub("[\128-\255]+", ""):gsub('%c', '_'):gsub('[\\/*?"<>|]', "_"):gsub(":", "_"):gsub("%s+$", ""):gsub("^%s+", "")
-		return part:sub(1, 48)
+		return part:sub(1, 25)
 	end)
 
 	return path:gsub("%.", "/"):gsub("//+", "/"):gsub("^/+", ""):gsub("/+$", "")
@@ -29,7 +29,7 @@ return function(service, dump_map)
 		elseif VALUE_CLASSES[object.ClassName] then
 			local ok, val = pcall(function() return object.Value end)
 			values[path] = { class_name = object.ClassName, value = ok and val or nil }
-		elseif dump_map and #path <= 100 then
+		elseif dump_map then
 			local is_gui = object:IsA("GuiObject") or object:IsA("LayerCollector") or object:IsA("UIBase")
 			if is_gui or #object:GetChildren() > 0 then
 				meta_instances[path] = object

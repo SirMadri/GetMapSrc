@@ -11,12 +11,12 @@ local function make_dir(path)
 end
 
 return function(game_name)
-	game_name = sanitize_name(game_name)
+	game_name = sanitize_name(game_name):sub(1, 25)
 	local base_dir = "_GetMapSrc/" .. game_name .. "/" .. os.date("%H-%M-%S")
 	make_dir(base_dir)
 	print("-- output dir: " .. base_dir)
 
-	return function(service_name, path, source, is_remote, silent)
+	return function(service_name, path, source, is_remote)
 		service_name = sanitize_name(service_name)
 		path = sanitize_name(path)
 		local full_path
@@ -27,6 +27,6 @@ return function(game_name)
 		end
 		make_dir(full_path:match("(.+)/[^/]+$"))
 		local ok, err = pcall(writefile, full_path, source)
-		if not ok and not silent then warn("-- failed to write " .. path .. ": " .. err) end
+		if not ok then warn("-- failed to write " .. path .. ": " .. err) end
 	end
 end
