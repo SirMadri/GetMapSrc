@@ -126,7 +126,7 @@ end
 if config.use_threading == false then
 	for _, entry in next, queue do
 		print("-- decompiling: " .. entry.path)
-		write_file(entry.service, entry.path, decompile_entry(entry))
+		write_file(entry.service, entry.path, decompile_entry(entry), nil, true)
 	end
 else
 	local MAX_WORKERS = 15
@@ -145,7 +145,7 @@ else
 				if timed_out then return end
 				timed_out = true
 				warn("-- timeout (" .. TIMEOUT .. "s): " .. entry.path)
-				write_file(entry.service, entry.path, "-- decompilation timed out after " .. TIMEOUT .. "s")
+				write_file(entry.service, entry.path, "-- decompilation timed out after " .. TIMEOUT .. "s", nil, true)
 				active_workers -= 1
 				done_count += 1
 			end)
@@ -156,7 +156,7 @@ else
 
 			done_count += 1
 			print("-- [" .. done_count .. "/" .. #queue .. "] " .. entry.path)
-			write_file(entry.service, entry.path, source)
+			write_file(entry.service, entry.path, source, nil, true)
 			active_workers -= 1
 		end)
 	end

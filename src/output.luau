@@ -16,12 +16,14 @@ return function(game_name)
 	make_dir(base_dir)
 	print("-- output dir: " .. base_dir)
 
-	return function(service_name, path, source, is_remote)
+	return function(service_name, path, source, is_remote, is_script)
 		service_name = sanitize_name(service_name)
 		path = sanitize_name(path)
 		local full_path
 		if is_remote then
 			full_path = base_dir .. "/Remotes/" .. service_name .. "/" .. path .. ".remote.lua"
+		elseif is_script then
+			full_path = base_dir .. "/" .. service_name .. "/" .. path .. "/_.lua"
 		else
 			full_path = base_dir .. "/" .. service_name .. "/" .. path .. ".lua"
 		end
