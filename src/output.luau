@@ -12,7 +12,7 @@ end
 
 return function(game_name)
 	game_name = sanitize_name(game_name):sub(1, 25)
-	local base_dir = "_GetMapSrc/" .. game_name .. "/" .. os.date("%H-%M-%S")
+	local base_dir = "_GetMapSrc/" .. game_name
 	make_dir(base_dir)
 	print("-- output dir: " .. base_dir)
 
