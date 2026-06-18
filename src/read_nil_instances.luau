@@ -50,6 +50,7 @@ return function()
 
 	for _, root in next, getnilinstances() do
 		if root.Parent ~= nil then continue end
+		if root:IsA("DataModel") then continue end
 		if IGNORED_ROOTS[root.Name] then continue end
 		local root_path = sanitize_segment(root.Name)
 

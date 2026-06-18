@@ -129,13 +129,19 @@ print("-- " .. #queue .. " scripts queued")
 
 local function decompile_entry(entry)
 	local success, source = pcall(repo.script_src, entry.mod)
-	return success and source or ("-- error: " .. tostring(source))
+	if not success then
+		return "-- error: " .. tostring(source)
+	end
+	return source
 end
 
 if config.use_threading == false then
 	for _, entry in next, queue do
 		print("-- decompiling: " .. entry.path)
-		write_file(entry.service, entry.path, decompile_entry(entry), nil, true)
+		local source = decompile_entry(entry)
+		if source then
+			write_file(entry.service, entry.path, source, nil, true)
+		end
 	end
 else
 	local MAX_WORKERS = 15
@@ -164,8 +170,10 @@ else
 			timed_out = true
 
 			done_count += 1
-			print("-- [" .. done_count .. "/" .. #queue .. "] " .. entry.path)
-			write_file(entry.service, entry.path, source, nil, true)
+			if source then
+				print("-- [" .. done_count .. "/" .. #queue .. "] " .. entry.path)
+				write_file(entry.service, entry.path, source, nil, true)
+			end
 			active_workers -= 1
 		end)
 	end

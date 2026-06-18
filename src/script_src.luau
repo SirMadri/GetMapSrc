@@ -32,7 +32,7 @@ end
 return function(script_obj)
 	local bytecode_ok, bytecode = pcall(getscriptbytecode, script_obj)
 	if not bytecode_ok then
-		return "-- failed to read script bytecode\n--[[\n" .. bytecode .. "\n--]]"
+		return nil
 	end
 
 	wait_rate_limit()
