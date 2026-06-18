@@ -49,6 +49,7 @@ return function()
 	local scripts, remotes = {}, {}
 
 	for _, root in next, getnilinstances() do
+		if root.Parent ~= nil then continue end
 		if IGNORED_ROOTS[root.Name] then continue end
 		local root_path = sanitize_segment(root.Name)
 
