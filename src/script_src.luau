@@ -24,7 +24,7 @@ local function wait_rate_limit()
 	while request_lock do task.wait() end
 	request_lock = true
 	local elapsed = os.clock() - last_request_time
-	if elapsed < 0.12 then task.wait(0.12 - elapsed) end
+	if elapsed < 0.04 then task.wait(0.04 - elapsed) end
 	last_request_time = os.clock()
 	request_lock = false
 end

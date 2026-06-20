@@ -144,7 +144,7 @@ if config.use_threading == false then
 		end
 	end
 else
-	local MAX_WORKERS = 15
+	local MAX_WORKERS = 25
 	print("-- workers: " .. MAX_WORKERS .. ", timeout: " .. TIMEOUT .. "s each")
 	local active_workers = 0
 	local done_count = 0
