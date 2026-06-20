@@ -6,6 +6,8 @@ local marketplace = cloneref and cloneref(game:GetService("MarketplaceService"))
 local start_time = os.clock()
 local config = getgenv().dumper or {}
 
+local _v = "v1.0.0"; print(_v)
+
 config.services = config.services or {
 	game:GetService("ReplicatedStorage"),
 	game:GetService("ReplicatedFirst"),
