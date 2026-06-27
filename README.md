@@ -7,12 +7,13 @@
 
 ## What does it do?
 
-- Scans services like `ReplicatedStorage`, `Workspace`, etc.
+- Scans services like `ReplicatedStorage`, `Workspace`, `PlayerGui`, etc.
 - Grabs bytecode from every `LocalScript` and `ModuleScript` and decompiles it via the [lua.expert](https://lua.expert) API
 - Dumps `RemoteEvent`, `RemoteFunction` and `UnreliableRemoteEvent` metadata
 - Generates `_meta.lua` files for every instance that has children, and for all `GuiObject`/`UIBase` elements (including leaf elements like buttons and labels) — preserving the full layout with `UDim2` positions, colors, text, fonts and more
 - Optionally scans nil-parented instances via `getnilinstances`
 - Saves everything preserving the original folder structure
+- Generates a `_dump_info.lua` at the root with stats about the dump
 
 ---
 
@@ -32,13 +33,14 @@ Set `getgenv().dumper` **before** running to control behavior:
 
 ```lua
 getgenv().dumper = {
-    -- services to scan (default: RS, RF, StarterPlayer, StarterGui, Workspace)
+    -- services to scan (default: RS, RF, StarterPlayer, StarterGui, Workspace, PlayerGui)
     services = {
         game:GetService("ReplicatedStorage"),
         game:GetService("ReplicatedFirst"),
         game:GetService("StarterPlayer"),
         game:GetService("StarterGui"),
         game:GetService("Workspace"),
+        game:GetService("Players").LocalPlayer.PlayerGui,
     },
 
     use_threading = true,       -- parallel decompilation (faster, default: true)
@@ -66,45 +68,90 @@ loadstring(game:HttpGet("https://raw.githubusercontent.com/SirMadri/GetMapSrc/ma
 ```
 _GetMapSrc/
 └── GameName/
-    └── 14-30-57/
-        ├── Workspace/
-        │   ├── Coin/
-        │   │   └── _meta.lua           -- Part properties, attributes, tags, children
-        │   ├── Characters/
-        │   │   ├── _meta.lua           -- Folder descriptor
-        │   │   └── SirMadri/
-        │   │       └── _meta.lua       -- Model with WorldPivot, PrimaryPart, etc.
-        │   └── CoinHandler.lua         -- decompiled LocalScript
-        ├── ReplicatedStorage/
-        │   └── CoinService.lua         -- decompiled ModuleScript
-        ├── Remotes/
-        │   └── ReplicatedStorage/
-        │       └── CollectCoin.remote.lua
-        ├── _CollectionService/         -- one file per tag
-        │   ├── Collectible.lua         -- lists all tagged instance paths
-        │   └── PlayerCharacter.lua     -- truncated if > collection_max_per_tag
-        ├── StarterGui/
-        │   └── MainMenu/
-        │       ├── _meta.lua           -- ScreenGui (enabled, z_index_behavior)
-        │       └── Background/
-        │           ├── _meta.lua       -- Frame (position, size, background_color3...)
-        │           ├── PlayButton/
-        │           │   └── _meta.lua  -- TextButton (text, font, text_color3, UDim2...)
-        │           └── QuitButton/
-        │               └── _meta.lua  -- leaf GuiObject, no children needed
-        ├── _Values/
-        │   ├── ReplicatedStorage.lua   -- all StringValue/NumberValue/BoolValue/etc per service
-        │   └── Workspace.lua
-        ├── _Bindables/
-        │   └── ReplicatedStorage/
-        │       └── Events/
-        │           ├── OnCoinCollected.lua   -- BindableEvent
-        │           └── GetPlayerData.lua     -- BindableFunction
-        └── nilinstances/               -- only if executor supports getnilinstances
-            ├── HiddenCoinHandler.lua   -- nil-parented script
-            └── HiddenFolder/
-                ├── _meta.lua           -- parent = "nil"
+    ├── _dump_info.lua              -- dump metadata (game, player, counts, failures)
+    ├── Workspace/
+    │   ├── Coin/
+    │   │   └── _meta.lua           -- Part properties, attributes, tags, children
+    │   ├── Characters/
+    │   │   ├── _meta.lua           -- Folder descriptor
+    │   │   └── SirMadri/
+    │   │       └── _meta.lua       -- Model with WorldPivot, PrimaryPart, etc.
+    │   └── CoinHandler/
+    │       └── CoinHandler.lua     -- decompiled LocalScript
+    ├── ReplicatedStorage/
+    │   └── CoinService/
+    │       └── CoinService.lua     -- decompiled ModuleScript
+    ├── Remotes/
+    │   └── ReplicatedStorage/
+    │       └── CollectCoin.remote.lua
+    ├── _CollectionService/         -- one file per tag
+    │   ├── Collectible.lua         -- lists all tagged instance paths
+    │   └── PlayerCharacter.lua     -- truncated if > collection_max_per_tag
+    ├── StarterGui/
+    │   └── MainMenu/
+    │       ├── _meta.lua           -- ScreenGui (enabled, z_index_behavior)
+    │       └── Background/
+    │           ├── _meta.lua       -- Frame (position, size, background_color3...)
+    │           ├── PlayButton/
+    │           │   └── _meta.lua  -- TextButton (text, font, text_color3, UDim2...)
+    │           └── QuitButton/
+    │               └── _meta.lua  -- leaf GuiObject, no children needed
+    ├── _Values/
+    │   ├── ReplicatedStorage.lua   -- all StringValue/NumberValue/BoolValue/etc per service
+    │   └── Workspace.lua
+    ├── _Bindables/
+    │   └── ReplicatedStorage/
+    │       └── Events/
+    │           ├── OnCoinCollected.lua   -- BindableEvent
+    │           └── GetPlayerData.lua     -- BindableFunction
+    └── nilinstances/               -- only if executor supports getnilinstances
+        ├── HiddenCoinHandler/
+        │   └── HiddenCoinHandler.lua    -- nil-parented script
+        └── HiddenFolder/
+            ├── _meta.lua           -- parent = "nil"
+            └── HiddenModule/
                 └── HiddenModule.lua
+```
+
+### Decompiled script header
+
+```lua
+-- dumped by https://github.com/SirMadri/GetMapSrc
+-- decompiled by https://lua.expert/
+-- Name: CoinService
+-- ClassName: ModuleScript
+-- Path: ReplicatedStorage.CoinService
+
+-- ... decompiled source ...
+```
+
+### `_dump_info.lua` format
+
+```lua
+-- GetMapSrc | Dump Info
+return {
+    game_name = "Coin Collector",
+    place_id = 987654321,
+    job_id = "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+    dump_date = "2026-06-27 14:30:00",
+    elapsed_seconds = 8.42,
+    player = {
+        name = "SirMadri",
+        user_id = 12345678,
+    },
+    services_scanned = { "ReplicatedStorage", "StarterGui", "Workspace", "PlayerGui" },
+    counts = {
+        scripts = 6,
+        remotes = 2,
+        bindables = 2,
+        values = 5,
+        collection_tags = 2,
+        nil_scripts = 2,
+    },
+    failed_scripts = {   -- only present if there were failures
+        "nilinstances/HiddenCoinHandler (timeout)",
+    },
+}
 ```
 
 ### `_meta.lua` format
