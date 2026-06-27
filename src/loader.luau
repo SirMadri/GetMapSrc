@@ -6,7 +6,7 @@ local marketplace = cloneref and cloneref(game:GetService("MarketplaceService"))
 local start_time = os.clock()
 local config = getgenv().dumper or {}
 
-local _v = "v1.0.0"; print("-- " .. _v)
+local VERSION = "1.0.1"; print("-- " .. VERSION)
 
 config.services = config.services or {
 	game:GetService("ReplicatedStorage"),
@@ -14,6 +14,7 @@ config.services = config.services or {
 	game:GetService("StarterPlayer"),
 	game:GetService("StarterGui"),
 	game:GetService("Workspace"),
+	game:GetService("Players").LocalPlayer.PlayerGui,
 }
 
 local info_ok, game_info = pcall(marketplace.GetProductInfoAsync, marketplace, game.PlaceId)
@@ -33,8 +34,11 @@ if not caps.can_write then
 end
 
 local queue = {}
-local write_file = repo.output(game_name)
+local write_file, write_root = repo.output(game_name)
 local TIMEOUT = 60
+
+local total_remotes, total_bindables, total_values, nil_script_count = 0, 0, 0, 0
+local failed_scripts = {}
 
 local dump_map = config.dump_map ~= false
 local map_services = config.map_services
@@ -56,6 +60,7 @@ for _, service in ipairs(config.services) do
 			if ri % 50 == 0 then task.wait() end
 			write_file(svc_name, path, repo.remote_src(meta), true)
 		end
+		total_remotes += ri
 	end
 
 	if config.dump_bindables ~= false then
@@ -65,9 +70,13 @@ for _, service in ipairs(config.services) do
 			if bi % 50 == 0 then task.wait() end
 			write_file("_Bindables/" .. svc_name, path, repo.remote_src(meta))
 		end
+		total_bindables += bi
 	end
 
 	if config.dump_values ~= false and next(values) then
+		local vc = 0
+		for _ in next, values do vc += 1 end
+		total_values += vc
 		write_file("_Values", svc_name, repo.value_src(svc_name, values))
 	end
 
@@ -82,12 +91,12 @@ for _, service in ipairs(config.services) do
 	end
 end
 
+local tag_count = 0
 if config.dump_collection ~= false then
 	print("-- reading: collection service")
 	local max_per_tag = config.collection_max_per_tag or 500
 	local tags = repo.read_collection_service(max_per_tag)
 
-	local tag_count = 0
 	for tag, data in next, tags do
 		local lines = {
 			"-- GetMapSrc | CollectionService",
@@ -117,6 +126,7 @@ if caps.getnilinstances and config.dump_nil_instances ~= false then
 	local nil_scripts, nil_remotes = repo.read_nil_instances()
 
 	for path, mod in next, nil_scripts do
+		nil_script_count += 1
 		queue[#queue + 1] = { service = "nilinstances", path = path, mod = mod }
 	end
 
@@ -132,6 +142,7 @@ print("-- " .. #queue .. " scripts queued")
 local function decompile_entry(entry)
 	local success, source = pcall(repo.script_src, entry.mod)
 	if not success then
+		failed_scripts[#failed_scripts + 1] = entry.service .. "/" .. entry.path
 		return "-- error: " .. tostring(source)
 	end
 	return source
@@ -162,6 +173,7 @@ else
 				if timed_out then return end
 				timed_out = true
 				warn("-- timeout (" .. TIMEOUT .. "s): " .. entry.path)
+				failed_scripts[#failed_scripts + 1] = entry.service .. "/" .. entry.path .. " (timeout)"
 				write_file(entry.service, entry.path, "-- decompilation timed out after " .. TIMEOUT .. "s", nil, true)
 				active_workers -= 1
 				done_count += 1
@@ -183,4 +195,47 @@ else
 	repeat task.wait() until done_count >= #queue
 end
 
-print("-- done in " .. math.floor((os.clock() - start_time) * 100) / 100 .. "s")
+local elapsed = math.floor((os.clock() - start_time) * 100) / 100
+print("-- done in " .. elapsed .. "s")
+
+local local_player = game:GetService("Players").LocalPlayer
+local function esc(s) return tostring(s):gsub('\\', '\\\\'):gsub('"', '\\"') end
+
+local scanned_names = {}
+for _, svc in ipairs(config.services) do
+	scanned_names[#scanned_names + 1] = '"' .. esc(svc.Name or svc.ClassName) .. '"'
+end
+
+local info_lines = {
+	"-- GetMapSrc | Dump Info",
+	"return {",
+	('\tgame_name = "%s",'):format(esc(game_name)),
+	("\tplace_id = %d,"):format(game.PlaceId),
+	('\tjob_id = "%s",'):format(esc(game.JobId)),
+	('\tdump_date = "%s",'):format(os.date("%Y-%m-%d %H:%M:%S")),
+	("\telapsed_seconds = %g,"):format(elapsed),
+	"\tplayer = {",
+	('\t\tname = "%s",'):format(esc(local_player.Name)),
+	("\t\tuser_id = %d,"):format(local_player.UserId),
+	"\t},",
+	"\tservices_scanned = { " .. table.concat(scanned_names, ", ") .. " },",
+	"\tcounts = {",
+	("\t\tscripts = %d,"):format(#queue),
+	("\t\tremotes = %d,"):format(total_remotes),
+	("\t\tbindables = %d,"):format(total_bindables),
+	("\t\tvalues = %d,"):format(total_values),
+	("\t\tcollection_tags = %d,"):format(tag_count),
+	("\t\tnil_scripts = %d,"):format(nil_script_count),
+	"\t},",
+}
+
+if #failed_scripts > 0 then
+	info_lines[#info_lines + 1] = "\tfailed_scripts = {"
+	for _, path in ipairs(failed_scripts) do
+		info_lines[#info_lines + 1] = ('\t\t"%s",'):format(esc(path))
+	end
+	info_lines[#info_lines + 1] = "\t},"
+end
+
+info_lines[#info_lines + 1] = "}"
+write_root("_dump_info.lua", table.concat(info_lines, "\n"))

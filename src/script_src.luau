@@ -52,5 +52,13 @@ return function(script_obj)
 	end
 
 	local source = response.Body:gsub("^%-%- https://lua%.expert/%s*\n?", "")
-	return "-- dumped by https://github.com/SirMadri/GetMapSrc\n-- decompiled by https://lua.expert/\n" .. source
+	local header = table.concat({
+		"-- dumped by https://github.com/SirMadri/GetMapSrc",
+		"-- decompiled by https://lua.expert/",
+		"-- Name: " .. script_obj.Name,
+		"-- ClassName: " .. script_obj.ClassName,
+		"-- Path: " .. script_obj:GetFullName(),
+		"",
+	}, "\n")
+	return header .. source
 end

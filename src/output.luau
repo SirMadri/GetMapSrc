@@ -27,14 +27,15 @@ return function(game_name)
 
 	local MAX_DEPTH = 20
 
-	return function(service_name, path, source, is_remote, is_script)
+	local function write_file(service_name, path, source, is_remote, is_script)
 		service_name = sanitize_name(service_name)
 		path = sanitize_name(path)
 		local full_path
 		if is_remote then
 			full_path = base_dir .. "/Remotes/" .. service_name .. "/" .. path .. ".remote.lua"
 		elseif is_script then
-			full_path = base_dir .. "/" .. service_name .. "/" .. path .. "/_.lua"
+			local script_name = path:match("[^/]+$") or path
+			full_path = base_dir .. "/" .. service_name .. "/" .. path .. "/" .. script_name .. ".lua"
 		else
 			full_path = base_dir .. "/" .. service_name .. "/" .. path .. ".lua"
 		end
@@ -44,4 +45,11 @@ return function(game_name)
 		local ok, err = pcall(writefile, full_path, source)
 		if not ok then warn("-- failed to write " .. path .. ": " .. err) end
 	end
+
+	local function write_root(filename, source)
+		local ok, err = pcall(writefile, base_dir .. "/" .. filename, source)
+		if not ok then warn("-- failed to write " .. filename .. ": " .. err) end
+	end
+
+	return write_file, write_root
 end
