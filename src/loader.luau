@@ -23,7 +23,7 @@ local game_name = info_ok and game_info and game_info.Name or tostring(game.Plac
 print("-- dumping: " .. game_name)
 print("-- your game may freeze while we look for scripts")
 
-local repo = loadstring(game:HttpGet("https://raw.githubusercontent.com/SirMadri/GetMapSrc/refs/heads/testing/src/get_modules.luau"))()
+local repo = loadstring(game:HttpGet("https://raw.githubusercontent.com/SirMadri/GetMapSrc/refs/heads/main/src/get_modules.luau"))()
 local caps = repo.unc
 
 if not caps.can_decompile then
