@@ -1,4 +1,4 @@
-local base_url = "https://raw.githubusercontent.com/SirMadri/GetMapSrc/refs/heads/main/src"
+local base_url = "https://raw.githubusercontent.com/SirMadri/GetMapSrc/refs/heads/testing/src"
 local repo = {}
 local pending = 9
 

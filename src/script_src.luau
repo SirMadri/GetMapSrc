@@ -1,8 +1,8 @@
-assert(getscriptbytecode, "exploit does not support getscriptbytecode.")
-
+local genv = getgenv()
 local last_request_time = 0
 local request_lock = false
-local http = cloneref and cloneref(game:GetService("HttpService")) or game:GetService("HttpService")
+local http_service = game:GetService("HttpService")
+local http = cloneref and cloneref(http_service) or http_service
 local BASE64_CHARS = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/"
 
 local function encode_base64(data)
@@ -29,36 +29,135 @@ local function wait_rate_limit()
 	request_lock = false
 end
 
-return function(script_obj)
-	local bytecode_ok, bytecode = pcall(getscriptbytecode, script_obj)
+local function normalize_decompiler(value)
+	local method = tostring(value or "auto"):lower():gsub("%s+", "")
+	if method == "" or method == "auto" then
+		return "auto"
+	end
+	if method == "executor" or method == "native" or method == "decompile" then
+		return "executor"
+	end
+	if method == "luaexpert" or method == "lua.expert" or method == "lua_expert" or method == "api" then
+		return "luaexpert"
+	end
+	return method
+end
+
+local function get_decompiler_method(options)
+	if type(options) == "string" then
+		return normalize_decompiler(options)
+	end
+	if type(options) == "table" then
+		return normalize_decompiler(options.decompiler or options.decompile_method)
+	end
+	return "auto"
+end
+
+local function get_method_order(method)
+	if method == "executor" then
+		return { "executor" }
+	end
+	if method == "luaexpert" then
+		return { "luaexpert" }
+	end
+	return { "executor", "luaexpert" }
+end
+
+local function header_for(script_obj, decompiler_name)
+	local lines = {
+		"-- dumped by https://github.com/SirMadri/GetMapSrc",
+	}
+	if decompiler_name then
+		lines[#lines + 1] = "-- decompiled by " .. decompiler_name
+	else
+		lines[#lines + 1] = ""
+	end
+	lines[#lines + 1] = "-- Name: " .. script_obj.Name
+	lines[#lines + 1] = "-- ClassName: " .. script_obj.ClassName
+	lines[#lines + 1] = "-- Path: " .. script_obj:GetFullName()
+	lines[#lines + 1] = ""
+	return table.concat(lines, "\n")
+end
+
+local function decompile_with_executor(script_obj)
+	if not genv.decompile then
+		return nil, "executor decompile() is not available"
+	end
+
+	local decompile_ok, source = pcall(genv.decompile, script_obj)
+	if not decompile_ok then
+		return nil, "executor decompile() threw an error: " .. tostring(source)
+	end
+
+	source = tostring(source or "")
+	if source == "" then
+		return nil, "executor decompile() returned empty source"
+	end
+
+	return source
+end
+
+local function decompile_with_luaexpert(script_obj)
+	if not genv.getscriptbytecode then
+		return nil, "getscriptbytecode is not available"
+	end
+	if not genv.request then
+		return nil, "request is not available"
+	end
+
+	local bytecode_ok, bytecode = pcall(genv.getscriptbytecode, script_obj)
 	if not bytecode_ok then
-		return nil
+		return nil, "getscriptbytecode threw an error: " .. tostring(bytecode)
+	end
+	if not bytecode or bytecode == "" then
+		return nil, "getscriptbytecode returned empty bytecode"
 	end
 
 	wait_rate_limit()
+	local encode = genv.base64_encode or encode_base64
 
-	local request_ok, response = pcall(request, {
+	local request_ok, response = pcall(genv.request, {
 		Url = "https://api.lua.expert/decompile",
 		Method = "POST",
 		Headers = { ["content-type"] = "application/json" },
-		Body = http:JSONEncode({ script = (base64_encode or encode_base64)(bytecode) }),
+		Body = http:JSONEncode({ script = encode(bytecode) }),
 	})
 
 	if not request_ok then
-		return "-- request() threw an error\n--[[\n" .. tostring(response) .. "\n--]]"
+		return nil, "request() threw an error: " .. tostring(response)
 	end
 	if not response or response.StatusCode ~= 200 then
-		return "-- api request error\n--[[\n" .. (response and response.Body or "no response") .. "\n--]]"
+		return nil, "lua.expert API request error: " .. (response and response.Body or "no response")
 	end
 
-	local source = response.Body:gsub("^%-%- https://lua%.expert/%s*\n?", "")
-	local header = table.concat({
-		"-- dumped by https://github.com/SirMadri/GetMapSrc",
-		"-- decompiled by https://lua.expert/",
-		"-- Name: " .. script_obj.Name,
-		"-- ClassName: " .. script_obj.ClassName,
-		"-- Path: " .. script_obj:GetFullName(),
-		"",
-	}, "\n")
-	return header .. source
+	local body = response.Body
+	if type(body) ~= "string" or body == "" then
+		return nil, "lua.expert API returned empty body"
+	end
+
+	local source = body:gsub("^%-%- https://lua%.expert/%s*\n?", "")
+	return source, "https://lua.expert/"
+end
+
+local DECOMPILERS = {
+	executor = decompile_with_executor,
+	luaexpert = decompile_with_luaexpert,
+}
+
+return function(script_obj, options)
+	local errors = {}
+	for _, method in ipairs(get_method_order(get_decompiler_method(options))) do
+		local decompiler = DECOMPILERS[method]
+		if decompiler then
+			local source, decompiler_name = decompiler(script_obj)
+			if source then
+				return header_for(script_obj, decompiler_name) .. source, decompiler_name
+			end
+			errors[#errors + 1] = method .. ": " .. tostring(decompiler_name)
+		else
+			errors[#errors + 1] = method .. ": unknown decompiler"
+		end
+	end
+
+	return nil, table.concat(errors, "\n")
 end

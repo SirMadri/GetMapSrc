@@ -2,11 +2,20 @@ repeat task.wait() until game:IsLoaded()
 print("-- starting dumper")
 print("-- made by SirMadri, https://github.com/SirMadri/GetMapSrc")
 
-local marketplace = cloneref and cloneref(game:GetService("MarketplaceService")) or game:GetService("MarketplaceService")
+local marketplace_service = game:GetService("MarketplaceService")
+local marketplace = cloneref and cloneref(marketplace_service) or marketplace_service
 local start_time = os.clock()
 local config = getgenv().dumper or {}
+local executor = "unknown"
 
-local VERSION = "1.0.1"; print("-- " .. VERSION)
+if identifyexecutor then
+	local executor_ok, executor_name = pcall(identifyexecutor)
+	if executor_ok and executor_name then
+		executor = tostring(executor_name)
+	end
+end
+
+local VERSION = "1.1.0"; print("-- " .. VERSION)
 
 config.services = config.services or {
 	game:GetService("ReplicatedStorage"),
@@ -20,14 +29,56 @@ config.services = config.services or {
 local info_ok, game_info = pcall(marketplace.GetProductInfoAsync, marketplace, game.PlaceId)
 local game_name = info_ok and game_info and game_info.Name or tostring(game.PlaceId)
 
+print("-- executor: " .. executor)
 print("-- dumping: " .. game_name)
 print("-- your game may freeze while we look for scripts")
 
-local repo = loadstring(game:HttpGet("https://raw.githubusercontent.com/SirMadri/GetMapSrc/refs/heads/main/src/get_modules.luau"))()
+local repo = loadstring(game:HttpGet("https://raw.githubusercontent.com/SirMadri/GetMapSrc/refs/heads/testing/src/get_modules.luau"))()
 local caps = repo.unc
 
-if not caps.can_decompile then
-	warn("-- missing getscriptbytecode or request - decompilation will not work")
+local function normalize_decompiler(value)
+	local method = tostring(value or "auto"):lower():gsub("%s+", "")
+	if method == "" or method == "auto" then
+		return "auto"
+	end
+	if method == "executor" or method == "native" or method == "decompile" then
+		return "executor"
+	end
+	if method == "luaexpert" or method == "lua.expert" or method == "lua_expert" or method == "api" then
+		return "luaexpert"
+	end
+	return method
+end
+
+local decompiler_mode = normalize_decompiler(config.decompiler)
+if decompiler_mode ~= "auto" and decompiler_mode ~= "executor" and decompiler_mode ~= "luaexpert" then
+	warn("-- unknown decompiler '" .. tostring(config.decompiler) .. "', using auto")
+	decompiler_mode = "auto"
+end
+
+local selected_can_decompile = caps.can_decompile
+if decompiler_mode == "executor" then
+	selected_can_decompile = caps.decompile
+elseif decompiler_mode == "luaexpert" then
+	selected_can_decompile = caps.can_luaexpert
+end
+
+if decompiler_mode == "auto" then
+	if caps.decompile then
+		print("-- decompiler: executor decompile()" .. (caps.can_luaexpert and " (luaexpert fallback)" or ""))
+	elseif caps.can_luaexpert then
+		warn("-- no executor decompile(), using luaexpert fallback")
+	else
+		warn("-- no supported decompiler found")
+	end
+elseif decompiler_mode == "executor" then
+	print("-- decompiler: executor decompile()")
+elseif decompiler_mode == "luaexpert" then
+	print("-- decompiler: luaexpert")
+end
+
+if not selected_can_decompile then
+	warn("-- selected decompiler is unavailable - decompilation will not work")
 end
 if not caps.can_write then
 	error("-- missing filesystem functions (isfolder/makefolder/writefile) - cannot save output")
@@ -140,10 +191,16 @@ end
 print("-- " .. #queue .. " scripts queued")
 
 local function decompile_entry(entry)
-	local success, source = pcall(repo.script_src, entry.mod)
+	local success, source, detail = pcall(repo.script_src, entry.mod, {
+		decompiler = decompiler_mode,
+	})
 	if not success then
 		failed_scripts[#failed_scripts + 1] = entry.service .. "/" .. entry.path
 		return "-- error: " .. tostring(source)
+	end
+	if not source then
+		failed_scripts[#failed_scripts + 1] = entry.service .. "/" .. entry.path
+		return "-- decompilation failed\n--[[\n" .. tostring(detail or "unknown error") .. "\n--]]"
 	end
 	return source
 end
@@ -213,6 +270,8 @@ local info_lines = {
 	("\tplace_id = %d,"):format(game.PlaceId),
 	('\tjob_id = "%s",'):format(esc(game.JobId)),
 	('\tdump_date = "%s",'):format(os.date("%Y-%m-%d %H:%M:%S")),
+	('\texecutor = "%s",'):format(esc(executor)),
+	('\tdecompiler = "%s",'):format(esc(decompiler_mode)),
 	("\telapsed_seconds = %g,"):format(elapsed),
 	"\tplayer = {",
 	('\t\tname = "%s",'):format(esc(local_player.Name)),
