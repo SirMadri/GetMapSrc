@@ -16,6 +16,13 @@ else
 	caps.cloneref = false
 end
 
+-- decompile
+if genv.decompile then
+	caps.decompile = true
+else
+	caps.decompile = false
+end
+
 -- bytecode, nilinstance & b64
 caps.getscriptbytecode  = genv.getscriptbytecode ~= nil
 caps.base64_encode      = genv.base64_encode ~= nil
@@ -35,7 +42,8 @@ caps.setgenv = genv.setgenv ~= nil
 caps.loadstring = genv.loadstring ~= nil or loadstring ~= nil
 
 -- support
-caps.can_decompile  = caps.getscriptbytecode and caps.request ~= nil
+caps.can_luaexpert  = caps.getscriptbytecode and caps.request ~= nil
+caps.can_decompile  = caps.decompile or caps.can_luaexpert
 caps.can_write      = caps.isfolder and caps.makefolder and caps.writefile
 
 return caps

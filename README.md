@@ -8,7 +8,7 @@
 ## What does it do?
 
 - Scans services like `ReplicatedStorage`, `Workspace`, `PlayerGui`, etc.
-- Grabs bytecode from every `LocalScript` and `ModuleScript` and decompiles it via the [lua.expert](https://lua.expert) API
+- Uses the executor's `decompile()` when available, falling back to the [lua.expert](https://lua.expert) API (`getscriptbytecode` + `request`) when needed
 - Dumps `RemoteEvent`, `RemoteFunction` and `UnreliableRemoteEvent` metadata
 - Generates `_meta.lua` files for every instance that has children, and for all `GuiObject`/`UIBase` elements (including leaf elements like buttons and labels) — preserving the full layout with `UDim2` positions, colors, text, fonts and more
 - Optionally scans nil-parented instances via `getnilinstances`
@@ -44,6 +44,7 @@ getgenv().dumper = {
     },
 
     use_threading = true,       -- parallel decompilation (faster, default: true)
+    decompiler = "auto",        -- "auto" = executor decompile() first, then luaexpert; also "executor" / "luaexpert"
     dump_remotes = true,        -- dump RemoteEvent / RemoteFunction (default: true)
     dump_map = true,            -- generate _meta.lua for instances with children (default: true)
     dump_collection = true,     -- dump CollectionService tags (default: true)
@@ -117,7 +118,7 @@ _GetMapSrc/
 
 ```lua
 -- dumped by https://github.com/SirMadri/GetMapSrc
--- decompiled by https://lua.expert/
+
 -- Name: CoinService
 -- ClassName: ModuleScript
 -- Path: ReplicatedStorage.CoinService
@@ -134,6 +135,8 @@ return {
     place_id = 987654321,
     job_id = "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
     dump_date = "2026-06-27 14:30:00",
+    executor = "Volt",
+    decompiler = "auto",
     elapsed_seconds = 8.42,
     player = {
         name = "SirMadri",
@@ -202,8 +205,9 @@ See [`output_example/`](output_example/) for a full realistic example.
 
 | API | Required |
 |---|---|
-| `getscriptbytecode` | Yes |
-| `request` | Yes |
+| `decompile` | No -- used first when available |
+| `getscriptbytecode` | Only for `luaexpert` fallback |
+| `request` | Only for `luaexpert` fallback |
 | `game:HttpGet` | Yes |
 | `isfolder` / `makefolder` / `writefile` | Yes |
 | `getgenv` | Yes |
@@ -211,7 +215,7 @@ See [`output_example/`](output_example/) for a full realistic example.
 | `getnilinstances` | No — nil instance scan skipped if missing |
 | `base64_encode` | No — built-in fallback used |
 
-The loader auto-detects which APIs are available via `UNC.luau` and warns you if something critical is missing.
+The loader auto-detects which APIs are available via `UNC.luau`. In `decompiler = "auto"` mode, it tries executor `decompile()` first and falls back to `luaexpert` if the executor decompiler is missing or fails.
 
 ---
 

@@ -4,6 +4,8 @@ return {
 	place_id = 987654321,
 	job_id = "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
 	dump_date = "2026-06-27 14:30:00",
+	executor = "ExampleExecutor",
+	decompiler = "auto",
 	elapsed_seconds = 8.42,
 	player = {
 		name = "SirMadri",
