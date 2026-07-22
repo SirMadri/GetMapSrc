@@ -65,7 +65,7 @@ end
 
 if decompiler_mode == "auto" then
 	if caps.decompile then
-		print("-- decompiler: executor decompile()" .. (caps.can_luaexpert and " (luaexpert fallback)" or ""))
+		print("-- decompiler: executor decompile()")
 	elseif caps.can_luaexpert then
 		warn("-- no executor decompile(), using luaexpert fallback")
 	else
