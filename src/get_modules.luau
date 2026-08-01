@@ -1,9 +1,10 @@
 local base_url = "https://raw.githubusercontent.com/SirMadri/GetMapSrc/refs/heads/main/src"
 local repo = {}
-local pending = 9
+local pending = 10
 
 for module_name, file_path in next, {
 	unc                      = "/UNC.luau",
+	blocked_modules          = "/blocked_modules.luau",
 	script_src               = "/script_src.luau",
 	read_game                = "/read_game.luau",
 	read_nil_instances       = "/read_nil_instances.luau",

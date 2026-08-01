@@ -81,6 +81,15 @@ local queue = {}
 local write_file, write_root = repo.output(game_name)
 local TIMEOUT = 60
 
+local function queue_script(service, path, mod)
+	if repo.blocked_modules(game.PlaceId, path) then
+		warn("-- skipping known crashing module: " .. service .. "/" .. path)
+		return
+	end
+
+	queue[#queue + 1] = { service = service, path = path, mod = mod }
+end
+
 local total_remotes, total_bindables, total_values, nil_script_count = 0, 0, 0, 0
 local failed_scripts = {}
 
@@ -94,7 +103,7 @@ for _, service in ipairs(config.services) do
 	local scripts, found_remotes, meta_instances, values, bindables = repo.read_game(service, should_map)
 
 	for path, mod in next, scripts do
-		queue[#queue + 1] = { service = svc_name, path = path, mod = mod }
+		queue_script(svc_name, path, mod)
 	end
 
 	if config.dump_remotes ~= false then
@@ -171,7 +180,7 @@ if caps.getnilinstances and config.dump_nil_instances ~= false then
 
 	for path, mod in next, nil_scripts do
 		nil_script_count += 1
-		queue[#queue + 1] = { service = "nilinstances", path = path, mod = mod }
+		queue_script("nilinstances", path, mod)
 	end
 
 	if config.dump_remotes ~= false then
@@ -207,7 +216,7 @@ if config.use_threading == false then
 		end
 	end
 else
-	local MAX_WORKERS = 10
+	local MAX_WORKERS = 25
 	print("-- workers: " .. MAX_WORKERS .. ", timeout: " .. TIMEOUT .. "s each")
 	local active_workers = 0
 	local done_count = 0
