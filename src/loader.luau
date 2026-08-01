@@ -2,20 +2,13 @@ repeat task.wait() until game:IsLoaded()
 print("-- starting dumper")
 print("-- made by SirMadri, https://github.com/SirMadri/GetMapSrc")
 
-local marketplace_service = game:GetService("MarketplaceService")
-local marketplace = cloneref and cloneref(marketplace_service) or marketplace_service
+local marketplace = cloneref(game:GetService("MarketplaceService"))
 local start_time = os.clock()
 local config = getgenv().dumper or {}
-local executor = "unknown"
 
-if identifyexecutor then
-	local executor_ok, executor_name = pcall(identifyexecutor)
-	if executor_ok and executor_name then
-		executor = tostring(executor_name)
-	end
-end
+local executor = identifyexecutor() or "shit executor"
 
-local VERSION = "1.1.0"; print("-- " .. VERSION)
+local VERSION = "1.1.1"; print("-- " .. VERSION)
 
 config.services = config.services or {
 	game:GetService("ReplicatedStorage"),
@@ -214,7 +207,7 @@ if config.use_threading == false then
 		end
 	end
 else
-	local MAX_WORKERS = 25
+	local MAX_WORKERS = 10
 	print("-- workers: " .. MAX_WORKERS .. ", timeout: " .. TIMEOUT .. "s each")
 	local active_workers = 0
 	local done_count = 0
