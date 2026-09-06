@@ -11,7 +11,9 @@
 - Uses the executor's `decompile()` when available, falling back to the [lua.expert](https://lua.expert) API (`getscriptbytecode` + `request`) when needed
 - Dumps `RemoteEvent`, `RemoteFunction` and `UnreliableRemoteEvent` metadata
 - Generates `_meta.lua` files for every instance that has children, and for all `GuiObject`/`UIBase` elements (including leaf elements like buttons and labels) — preserving the full layout with `UDim2` positions, colors, text, fonts and more
-- Optionally scans nil-parented instances via `getnilinstances`
+- Optionally scans nil-parented instances via `getnilinstances`, and mines `getmodules()` for cached ModuleScripts the nil scan misses
+- Deduplicates scripts by bytecode hash, so a module repeated across the game is decompiled once
+- Resumes a crashed dump from where it stopped instead of starting over
 - Saves everything preserving the original folder structure
 - Generates a `_dump_info.lua` at the root with stats about the dump
 
@@ -50,7 +52,9 @@ getgenv().dumper = {
     dump_collection = true,     -- dump CollectionService tags (default: true)
     dump_values = true,         -- dump StringValue/NumberValue/BoolValue/etc (default: true)
     dump_bindables = true,      -- dump BindableEvent / BindableFunction (default: true)
-    dump_nil_instances = true,  -- scan getnilinstances() if supported (default: true)
+    dump_nil_instances = true,  -- scan getnilinstances()/getmodules() if supported (default: true)
+    dedupe_scripts = true,      -- decompile identical bytecode once (needs getscripthash, default: true)
+    resume = true,              -- skip work already done by a crashed run (default: true)
 
     -- limit _meta.lua generation to specific services only (default: all services)
     -- map_services = { Workspace = true },
@@ -70,6 +74,7 @@ loadstring(game:HttpGet("https://raw.githubusercontent.com/SirMadri/GetMapSrc/ma
 _GetMapSrc/
 └── GameName/
     ├── _dump_info.lua              -- dump metadata (game, player, counts, failures)
+    ├── _progress.txt               -- resume checkpoint; deleted after a clean run
     ├── Workspace/
     │   ├── Coin/
     │   │   └── _meta.lua           -- Part properties, attributes, tags, children
@@ -105,14 +110,26 @@ _GetMapSrc/
     │       └── Events/
     │           ├── OnCoinCollected.lua   -- BindableEvent
     │           └── GetPlayerData.lua     -- BindableFunction
-    └── nilinstances/               -- only if executor supports getnilinstances
-        ├── HiddenCoinHandler/
-        │   └── HiddenCoinHandler.lua    -- nil-parented script
-        └── HiddenFolder/
-            ├── _meta.lua           -- parent = "nil"
-            └── HiddenModule/
-                └── HiddenModule.lua
+    ├── nilinstances/               -- only if executor supports getnilinstances
+    │   ├── HiddenCoinHandler/
+    │   │   └── HiddenCoinHandler.lua    -- nil-parented script
+    │   └── HiddenFolder/
+    │       ├── _meta.lua           -- parent = "nil"
+    │       └── HiddenModule/
+    │           └── HiddenModule.lua
+    └── _CachedModules/             -- cached modules that still have a parent,
+        └── Lighting/               -- but live outside the scanned services
+            └── DayNight/
+                └── DayNight.lua
 ```
+
+### Resume
+
+A dump that crashes (or that you stop) leaves `_progress.txt` behind listing the
+scripts already written. Running the dumper again skips those and continues.
+Only successes are recorded, so timeouts and errors are retried on the next run.
+The file is deleted after a run that finishes with no failures. Set
+`resume = false` to always start from scratch.
 
 ### Decompiled script header
 
@@ -150,6 +167,13 @@ return {
         values = 5,
         collection_tags = 2,
         nil_scripts = 2,
+        cached_modules = 1,       -- from getmodules(), parented outside scanned services
+        duplicate_scripts = 14,   -- shared bytecode, decompiled once
+        resumed_scripts = 0,      -- skipped because a previous run already wrote them
+    },
+    skipped_files = 1,            -- only present if files were dropped
+    skipped_file_paths = {
+        "_GetMapSrc/Game/Workspace/.../Deep.lua (depth 21 > 20)",
     },
     failed_scripts = {   -- only present if there were failures
         "nilinstances/HiddenCoinHandler (timeout)",
@@ -213,6 +237,9 @@ See [`output_example/`](output_example/) for a full realistic example.
 | `getgenv` | Yes |
 | `cloneref` | No — falls back to passthrough |
 | `getnilinstances` | No — nil instance scan skipped if missing |
+| `getmodules` | No — used to widen the nil instance scan |
+| `getscripthash` | No — bytecode deduplication skipped if missing |
+| `readfile` / `appendfile` / `delfile` | No — resume disabled if missing |
 | `base64_encode` | No — built-in fallback used |
 
 The loader auto-detects which APIs are available via `UNC.luau`. In `decompiler = "auto"` mode, it tries executor `decompile()` first and falls back to `luaexpert` if the executor decompiler is missing or fails.

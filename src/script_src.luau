@@ -2,8 +2,28 @@ local genv = getgenv()
 local last_request_time = 0
 local request_lock = false
 local http_service = game:GetService("HttpService")
-local http = cloneref and cloneref(http_service) or http_service
 local BASE64_CHARS = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/"
+
+-- executor functions live in the lexical global scope on some executors and in
+-- getgenv() on others; resolve both instead of assuming one
+local function pick(lexical, name)
+	if lexical ~= nil then return lexical end
+	local ok, value = pcall(rawget, genv, name)
+	if ok and value ~= nil then return value end
+	return nil
+end
+
+local fn_clone_ref         = pick(cloneref, "cloneref")
+local fn_decompile         = pick(decompile, "decompile")
+local fn_getscriptbytecode = pick(getscriptbytecode, "getscriptbytecode")
+local fn_request           = pick(request, "request")
+local fn_base64_encode     = pick(base64_encode, "base64_encode")
+
+local http = fn_clone_ref and fn_clone_ref(http_service) or http_service
+
+local LUAEXPERT_URL = "https://api.lua.expert/decompile"
+local MAX_ATTEMPTS = 3
+local MAX_BACKOFF = 10
 
 local function encode_base64(data)
 	local result, padding = {}, #data % 3
@@ -63,7 +83,11 @@ local function get_method_order(method)
 	return { "executor", "luaexpert" }
 end
 
-local function header_for(script_obj, decompiler_name)
+local module = {}
+
+-- exposed so the loader can rebuild a header for a script that shares its
+-- bytecode with an already decompiled one, instead of decompiling it again
+function module.header(script_obj, decompiler_name)
 	local lines = {
 		"-- dumped by https://github.com/SirMadri/GetMapSrc",
 	}
@@ -80,11 +104,11 @@ local function header_for(script_obj, decompiler_name)
 end
 
 local function decompile_with_executor(script_obj)
-	if not genv.decompile then
+	if not fn_decompile then
 		return nil, "executor decompile() is not available"
 	end
 
-	local decompile_ok, source = pcall(genv.decompile, script_obj)
+	local decompile_ok, source = pcall(fn_decompile, script_obj)
 	if not decompile_ok then
 		return nil, "executor decompile() threw an error: " .. tostring(source)
 	end
@@ -97,15 +121,24 @@ local function decompile_with_executor(script_obj)
 	return source
 end
 
+local function retry_delay(response, attempt)
+	local headers = response and response.Headers
+	if type(headers) == "table" then
+		local after = tonumber(headers["retry-after"] or headers["Retry-After"])
+		if after then return math.min(after, MAX_BACKOFF) end
+	end
+	return math.min(attempt * 2, MAX_BACKOFF)
+end
+
 local function decompile_with_luaexpert(script_obj)
-	if not genv.getscriptbytecode then
+	if not fn_getscriptbytecode then
 		return nil, "getscriptbytecode is not available"
 	end
-	if not genv.request then
+	if not fn_request then
 		return nil, "request is not available"
 	end
 
-	local bytecode_ok, bytecode = pcall(genv.getscriptbytecode, script_obj)
+	local bytecode_ok, bytecode = pcall(fn_getscriptbytecode, script_obj)
 	if not bytecode_ok then
 		return nil, "getscriptbytecode threw an error: " .. tostring(bytecode)
 	end
@@ -113,30 +146,49 @@ local function decompile_with_luaexpert(script_obj)
 		return nil, "getscriptbytecode returned empty bytecode"
 	end
 
-	wait_rate_limit()
-	local encode = genv.base64_encode or encode_base64
+	local encode = fn_base64_encode or encode_base64
+	local body = http:JSONEncode({ script = encode(bytecode) })
+	local last_error = "unknown error"
 
-	local request_ok, response = pcall(genv.request, {
-		Url = "https://api.lua.expert/decompile",
-		Method = "POST",
-		Headers = { ["content-type"] = "application/json" },
-		Body = http:JSONEncode({ script = encode(bytecode) }),
-	})
+	-- rate limits and transient 5xx are retried with backoff; anything else is a
+	-- real failure and returns immediately
+	for attempt = 1, MAX_ATTEMPTS do
+		wait_rate_limit()
 
-	if not request_ok then
-		return nil, "request() threw an error: " .. tostring(response)
+		local request_ok, response = pcall(fn_request, {
+			Url = LUAEXPERT_URL,
+			Method = "POST",
+			Headers = { ["content-type"] = "application/json" },
+			Body = body,
+		})
+
+		local backoff = attempt
+
+		if not request_ok then
+			last_error = "request() threw an error: " .. tostring(response)
+		elseif type(response) ~= "table" then
+			last_error = "request() returned no response"
+		else
+			local status = tonumber(response.StatusCode) or 0
+			if status == 200 then
+				local response_body = response.Body
+				if type(response_body) ~= "string" or response_body == "" then
+					return nil, "lua.expert API returned empty body"
+				end
+				return (response_body:gsub("^%-%- https://lua%.expert/%s*\n?", "")), "https://lua.expert/"
+			end
+
+			last_error = "lua.expert API error " .. status .. ": " .. tostring(response.Body)
+			if status ~= 429 and status < 500 then
+				return nil, last_error
+			end
+			backoff = retry_delay(response, attempt)
+		end
+
+		if attempt < MAX_ATTEMPTS then task.wait(backoff) end
 	end
-	if not response or response.StatusCode ~= 200 then
-		return nil, "lua.expert API request error: " .. (response and response.Body or "no response")
-	end
 
-	local body = response.Body
-	if type(body) ~= "string" or body == "" then
-		return nil, "lua.expert API returned empty body"
-	end
-
-	local source = body:gsub("^%-%- https://lua%.expert/%s*\n?", "")
-	return source, "https://lua.expert/"
+	return nil, last_error .. " (after " .. MAX_ATTEMPTS .. " attempts)"
 end
 
 local DECOMPILERS = {
@@ -144,14 +196,17 @@ local DECOMPILERS = {
 	luaexpert = decompile_with_luaexpert,
 }
 
-return function(script_obj, options)
+-- returns full_source, decompiler_name, body
+-- body is the source without the header, so callers can re-header it for a
+-- script with identical bytecode
+function module.decompile(script_obj, options)
 	local errors = {}
 	for _, method in ipairs(get_method_order(get_decompiler_method(options))) do
 		local decompiler = DECOMPILERS[method]
 		if decompiler then
 			local source, decompiler_name = decompiler(script_obj)
 			if source then
-				return header_for(script_obj, decompiler_name) .. source, decompiler_name
+				return module.header(script_obj, decompiler_name) .. source, decompiler_name, source
 			end
 			errors[#errors + 1] = method .. ": " .. tostring(decompiler_name)
 		else
@@ -161,3 +216,10 @@ return function(script_obj, options)
 
 	return nil, table.concat(errors, "\n")
 end
+
+-- callable table keeps the existing repo.script_src(obj, options) call working
+return setmetatable(module, {
+	__call = function(_, script_obj, options)
+		return module.decompile(script_obj, options)
+	end,
+})

@@ -1,6 +1,6 @@
 return function(meta)
 	return table.concat({
-		"-- GetMapSrc | Made by SirMari",
+		"-- GetMapSrc | Made by SirMadri",
 		"-- Name: " .. meta.Name,
 		"-- ClassName: " .. meta.ClassName,
 		"-- FullName: " .. meta.FullName,

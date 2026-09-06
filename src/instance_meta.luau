@@ -68,7 +68,10 @@ local function format_value(v)
 	return nil
 end
 
-return function(obj)
+-- descendant_count is supplied by read_game, which derives every count in one
+-- upward pass; calling obj:GetDescendants() per instance here was quadratic and
+-- dominated the cost of dumping a large Workspace
+return function(obj, descendant_count)
 	local lines = {
 		"return {",
 		('\tname = "%s",'):format(obj.Name),
@@ -127,17 +130,20 @@ return function(obj)
 	lines[#lines + 1] = ""
 
 	-- statistics
-	local _, desc_list = pcall(obj.GetDescendants, obj)
 	local _, chld_list = pcall(obj.GetChildren, obj)
-	local desc_count = type(desc_list) == "table" and #desc_list or 0
 	local chld_count = type(chld_list) == "table" and #chld_list or 0
+	local desc_count = descendant_count
+	if desc_count == nil then
+		local _, desc_list = pcall(obj.GetDescendants, obj)
+		desc_count = type(desc_list) == "table" and #desc_list or 0
+	end
 	lines[#lines + 1] = "\tstatistics = {"
 	lines[#lines + 1] = "\t\tdescendants = " .. desc_count .. ","
 	lines[#lines + 1] = "\t\tchildren = " .. chld_count .. ","
 	lines[#lines + 1] = "\t},"
 
-	-- children names
-	local children = obj:GetChildren()
+	-- children names (reusing the list already fetched for statistics)
+	local children = type(chld_list) == "table" and chld_list or {}
 	if #children > 0 then
 		lines[#lines + 1] = ""
 		lines[#lines + 1] = "\tchildren = {"
