@@ -12,6 +12,7 @@
 - Dumps `RemoteEvent`, `RemoteFunction` and `UnreliableRemoteEvent` metadata
 - Generates `_meta.lua` files for every instance that has children, and for all `GuiObject`/`UIBase` elements (including leaf elements like buttons and labels) — preserving the full layout with `UDim2` positions, colors, text, fonts and more
 - Optionally scans nil-parented instances via `getnilinstances`, and mines `getmodules()` for cached ModuleScripts the nil scan misses
+- Saves scripts reported by `getrunningscripts()` that live outside the scanned services (PlayerScripts, Lighting, orphans...)
 - Deduplicates scripts by bytecode hash, so a module repeated across the game is decompiled once
 - Resumes a crashed dump from where it stopped instead of starting over
 - Saves everything preserving the original folder structure
@@ -53,8 +54,13 @@ getgenv().dumper = {
     dump_values = true,         -- dump StringValue/NumberValue/BoolValue/etc (default: true)
     dump_bindables = true,      -- dump BindableEvent / BindableFunction (default: true)
     dump_nil_instances = true,  -- scan getnilinstances()/getmodules() if supported (default: true)
+    dump_running_scripts = true, -- scan getrunningscripts() / getactors() if supported (default: true)
     dedupe_scripts = true,      -- decompile identical bytecode once (needs getscripthash, default: true)
     resume = true,              -- skip work already done by a crashed run (default: true)
+
+    -- skip scripts whose path (without the service name) ends with one of these,
+    -- in any game; use it to dodge a module that crashes your decompiler
+    -- blocked_paths = { "Main/UIController/SetUpSkills" },
 
     -- limit _meta.lua generation to specific services only (default: all services)
     -- map_services = { Workspace = true },
@@ -117,6 +123,9 @@ _GetMapSrc/
     │       ├── _meta.lua           -- parent = "nil"
     │       └── HiddenModule/
     │           └── HiddenModule.lua
+    ├── _RunningScripts/            -- getrunningscripts() results that still have a parent
+    │   └── Players/                -- but live outside the scanned services
+    │       └── SirMadri/PlayerScripts/...
     └── _CachedModules/             -- cached modules that still have a parent,
         └── Lighting/               -- but live outside the scanned services
             └── DayNight/
@@ -168,6 +177,7 @@ return {
         collection_tags = 2,
         nil_scripts = 2,
         cached_modules = 1,       -- from getmodules(), parented outside scanned services
+        running_scripts = 3,      -- from getrunningscripts(), parented outside scanned services
         duplicate_scripts = 14,   -- shared bytecode, decompiled once
         resumed_scripts = 0,      -- skipped because a previous run already wrote them
     },
@@ -238,6 +248,8 @@ See [`output_example/`](output_example/) for a full realistic example.
 | `cloneref` | No — falls back to passthrough |
 | `getnilinstances` | No — nil instance scan skipped if missing |
 | `getmodules` | No — used to widen the nil instance scan |
+| `getrunningscripts` | No — running script scan skipped if missing |
+| `getactors` | No — scripts under active Actors are added to the running scan |
 | `getscripthash` | No — bytecode deduplication skipped if missing |
 | `readfile` / `appendfile` / `delfile` | No — resume disabled if missing |
 | `base64_encode` | No — built-in fallback used |

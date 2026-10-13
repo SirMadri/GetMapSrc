@@ -13,12 +13,13 @@ return {
 	},
 	services_scanned = { "ReplicatedStorage", "ReplicatedFirst", "StarterPlayer", "StarterGui", "Workspace", "PlayerGui" },
 	counts = {
-		scripts = 6,
+		scripts = 7,
 		remotes = 2,
 		bindables = 2,
 		values = 5,
 		collection_tags = 2,
 		nil_scripts = 2,
+		running_scripts = 1,
 	},
 	failed_scripts = {
 		"nilinstances/HiddenCoinHandler (timeout)",

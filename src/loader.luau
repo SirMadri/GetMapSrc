@@ -11,7 +11,7 @@ local config = getgenv().dumper or {}
 
 local executor = identifyexecutor() or "shit executor"
 
-local VERSION = "1.3.0"; print("-- " .. VERSION)
+local VERSION = "1.4.0"; print("-- " .. VERSION)
 
 config.services = config.services or {
 	game:GetService("ReplicatedStorage"),
@@ -93,7 +93,7 @@ local function queue_script(service, path, mod)
 	if collected[mod] then return end
 	collected[mod] = true
 
-	if repo.blocked_modules(game.PlaceId, path) then
+	if repo.blocked_modules(game.PlaceId, path, config.blocked_paths) then
 		warn("-- skipping known crashing module: " .. service .. "/" .. path)
 		return
 	end
@@ -102,7 +102,7 @@ local function queue_script(service, path, mod)
 end
 
 local total_remotes, total_bindables, total_values, nil_script_count = 0, 0, 0, 0
-local cached_script_count, duplicate_count, resumed_count = 0, 0, 0
+local cached_script_count, running_script_count, duplicate_count, resumed_count = 0, 0, 0, 0
 local failed_scripts = {}
 
 local dump_map = config.dump_map ~= false
@@ -186,14 +186,27 @@ if config.dump_collection ~= false then
 	print("-- " .. tag_count .. " tags dumped")
 end
 
--- read_nil_instances also mines getmodules(), so either capability is enough
-if (caps.getnilinstances or caps.getmodules) and config.dump_nil_instances ~= false then
-	print("-- reading: nil instances")
-	local nil_scripts, nil_remotes, cached_scripts = repo.read_nil_instances(collected)
+-- read_nil_instances also mines getmodules() and getrunningscripts(), so any of
+-- those capabilities is enough; each source has its own config toggle
+local scan_nil = (caps.getnilinstances or caps.getmodules) and config.dump_nil_instances ~= false
+local scan_running = (caps.getrunningscripts or caps.getactors) and config.dump_running_scripts ~= false
+
+if scan_nil or scan_running then
+	print("-- reading: nil instances / running scripts")
+	local nil_scripts, nil_remotes, cached_scripts, running_scripts = repo.read_nil_instances(collected, {
+		nil_instances = scan_nil,
+		running = scan_running,
+	})
 
 	for path, mod in next, nil_scripts do
 		nil_script_count += 1
 		queue_script("nilinstances", path, mod)
+	end
+
+	-- running scripts that still have a parent but sit outside the scanned services
+	for path, mod in next, running_scripts do
+		running_script_count += 1
+		queue_script("_RunningScripts", path, mod)
 	end
 
 	-- cached modules that still have a parent live in a real (but unscanned)
@@ -449,6 +462,7 @@ local info_lines = {
 	("\t\tcollection_tags = %d,"):format(tag_count),
 	("\t\tnil_scripts = %d,"):format(nil_script_count),
 	("\t\tcached_modules = %d,"):format(cached_script_count),
+	("\t\trunning_scripts = %d,"):format(running_script_count),
 	("\t\tduplicate_scripts = %d,"):format(duplicate_count),
 	("\t\tresumed_scripts = %d,"):format(resumed_count),
 	"\t},",

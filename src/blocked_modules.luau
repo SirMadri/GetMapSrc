@@ -22,10 +22,21 @@ local function path_matches_suffix(path, suffix)
 	return path == suffix or path:sub(-#suffix - 1) == "/" .. suffix
 end
 
-return function(place_id, path)
+-- extra_suffixes comes from getgenv().dumper.blocked_paths and applies to every
+-- place, so a crash in a game not listed above can be worked around without
+-- editing the repo
+return function(place_id, path, extra_suffixes)
 	for _, blocked_module in ipairs(BLOCKED_MODULES) do
 		if blocked_module.place_ids[place_id] and path_matches_suffix(path, blocked_module.path_suffix) then
 			return true
+		end
+	end
+
+	if type(extra_suffixes) == "table" then
+		for _, suffix in ipairs(extra_suffixes) do
+			if type(suffix) == "string" and suffix ~= "" and path_matches_suffix(path, suffix) then
+				return true
+			end
 		end
 	end
 

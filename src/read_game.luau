@@ -18,6 +18,14 @@ local VALUE_CLASSES    = {
 	Vector3Value = true, Color3Value = true, CFrameValue = true, ObjectValue = true,
 }
 
+-- a plain Script only runs on the client with RunContext = Client; a Legacy or
+-- Server one never replicates its bytecode, so decompiling it always fails
+local function is_client_script(object)
+	if object.ClassName ~= "Script" then return true end
+	local ok, run_context = pcall(function() return object.RunContext end)
+	return ok and run_context == Enum.RunContext.Client
+end
+
 local IGNORED_SEGMENTS = { node_modules = true, rbxts_include = true, _Index = true }
 
 local function path_is_ignored(path)
@@ -58,7 +66,7 @@ return function(service, dump_map)
 		if path_is_ignored(path) then continue end
 		local class_name = object.ClassName
 		if SCRIPT_CLASSES[class_name] then
-			scripts[claim_path(scripts, path)] = object
+			if is_client_script(object) then scripts[claim_path(scripts, path)] = object end
 		elseif REMOTE_CLASSES[class_name] then
 			remotes[claim_path(remotes, path)] = { Name = object.Name, ClassName = class_name, FullName = object:GetFullName() }
 		elseif BINDABLE_CLASSES[class_name] then
